@@ -3,841 +3,1225 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>DC 물건 분석 에이전트</title>
+<title>DC 물건 분석 에이전트 — 안산 권역</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <style>
+:root {
+  --bg: #f1f5f9; --surf: #ffffff; --surf2: #f7f9fc; --surf3: #edf2f7;
+  --border: #e2e8f0; --border2: #cbd5e1;
+  --blue: #2563eb; --blue-lo: #eff6ff; --blue-mid: rgba(37,99,235,.12);
+  --green: #16a34a; --green-lo: #f0fdf4;
+  --red: #dc2626; --red-lo: #fef2f2;
+  --amber: #d97706; --amber-lo: #fffbeb;
+  --purple: #7c3aed; --teal: #0891b2;
+  --slate: #64748b; --slate2: #94a3b8; --slate3: #cbd5e1;
+  --text: #1e293b; --text2: #475569;
+  --font: 'Noto Sans KR', system-ui, sans-serif;
+  --mono: 'IBM Plex Mono', monospace;
+}
 * { box-sizing: border-box; margin: 0; padding: 0; }
-html, body { height: 100%; font-family: 'Noto Sans KR', sans-serif; font-size: 13px; background: #f1f5f9; color: #1e293b; overflow: hidden; }
+html, body { height: 100%; font-family: var(--font); font-size: 13px; background: var(--bg); color: var(--text); overflow: hidden; }
 .app { display: flex; flex-direction: column; height: 100vh; }
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-thumb { background: var(--slate3); border-radius: 3px; }
 
-/* ── 상단 바 ── */
-.topbar { background: #fff; border-bottom: 1px solid #e2e8f0; padding: 0 16px; height: 48px; display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
-.topbar-title { font-size: 15px; font-weight: 700; }
-.topbar-badge { font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 4px; background: #eff6ff; color: #2563eb; border: 1px solid #bfdbfe; }
-.topbar-right { margin-left: auto; display: flex; gap: 6px; align-items: center; }
-.step-dot { width: 8px; height: 8px; border-radius: 50%; background: #cbd5e1; }
-.step-dot.active { background: #2563eb; }
-.step-dot.done { background: #16a34a; }
+/* ── TOPBAR ── */
+.topbar { height: 48px; background: var(--surf); border-bottom: 1px solid var(--border); padding: 0 16px; display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+.tb-title { font-size: 15px; font-weight: 800; }
+.tb-badge { font-size: 9.5px; font-weight: 700; padding: 2px 8px; border-radius: 4px; background: var(--blue-lo); color: var(--blue); border: 1px solid #bfdbfe; }
+.tb-right { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+.tb-key-label { font-size: 10.5px; color: var(--slate); font-weight: 600; }
+.tb-key-input { padding: 4px 9px; border: 1px solid var(--border2); border-radius: 5px; font-family: var(--mono); font-size: 11px; width: 260px; outline: none; color: var(--text); background: var(--surf); }
+.tb-key-input:focus { border-color: var(--blue); }
+.tb-key-btn { padding: 4px 11px; border-radius: 5px; border: none; background: var(--amber); color: #fff; font-size: 11px; font-weight: 700; cursor: pointer; font-family: var(--font); }
+.tb-key-btn:hover { background: #b45309; }
+.tb-key-test { padding: 4px 11px; border-radius: 5px; border: 1px solid var(--border2); background: var(--surf); color: var(--slate); font-size: 11px; font-weight: 700; cursor: pointer; font-family: var(--font); transition: all .15s; }
+.tb-key-test:hover { border-color: var(--blue); color: var(--blue); background: var(--blue-lo); }
+.tb-key-test:disabled { opacity: .5; cursor: not-allowed; }
+.tb-key-ok { font-size: 11px; color: var(--green); font-weight: 700; }
+.tb-key-no { font-size: 11px; color: var(--slate2); }
+.tb-key-err { font-size: 11px; color: var(--red); font-weight: 700; }
+.tb-key-testing { font-size: 11px; color: var(--blue); font-weight: 700; }
+/* 연동 테스트 결과 토스트 */
+.key-toast { position: fixed; top: 58px; right: 16px; z-index: 9999; padding: 12px 18px; border-radius: 9px; font-size: 12.5px; font-weight: 600; box-shadow: 0 6px 24px rgba(0,0,0,.15); display: flex; align-items: center; gap: 10px; min-width: 280px; max-width: 420px; transition: all .25s; pointer-events: none; }
+.key-toast.ok { background: #f0fdf4; border: 1px solid #86efac; color: #14532d; }
+.key-toast.err { background: #fef2f2; border: 1px solid #fca5a5; color: #7f1d1d; }
+.key-toast.loading { background: #eff6ff; border: 1px solid #93c5fd; color: #1e3a8a; }
+.kt-icon { font-size: 18px; flex-shrink: 0; }
+.kt-body { flex: 1; }
+.kt-title { font-size: 13px; font-weight: 700; margin-bottom: 2px; }
+.kt-sub { font-size: 11px; opacity: .8; font-weight: 400; }
 
-/* ── API 키 배너 ── */
-.api-banner { background: #fffbeb; border-bottom: 1px solid #fde68a; padding: 7px 16px; display: flex; align-items: center; gap: 10px; flex-shrink: 0; font-size: 12px; }
-.api-banner label { font-weight: 700; color: #92400e; white-space: nowrap; }
-.api-banner input { flex: 1; max-width: 360px; padding: 5px 10px; border: 1px solid #fcd34d; border-radius: 5px; font-family: monospace; font-size: 12px; color: #1e293b; background: #fff; outline: none; }
-.api-banner input:focus { border-color: #d97706; }
-.api-save { padding: 5px 12px; border-radius: 5px; border: none; background: #d97706; color: #fff; font-size: 11.5px; font-weight: 700; cursor: pointer; font-family: inherit; }
-.api-save:hover { background: #b45309; }
-.api-ok { font-size: 11px; font-weight: 600; color: #16a34a; }
-.api-no { font-size: 11px; color: #94a3b8; }
-.api-help { font-size: 11px; color: #64748b; }
-.api-help a { color: #2563eb; }
+/* ── LAYOUT ── */
+.layout { display: flex; flex: 1; overflow: hidden; }
 
-.body { display: flex; flex: 1; overflow: hidden; }
+/* ── LEFT PROCESS PANEL ── */
+.left { width: 220px; flex-shrink: 0; background: var(--surf); border-right: 1px solid var(--border); display: flex; flex-direction: column; overflow: hidden; }
+.left-title { padding: 14px 16px 10px; font-size: 11px; font-weight: 800; color: var(--slate); text-transform: uppercase; letter-spacing: .08em; border-bottom: 1px solid var(--border); flex-shrink: 0; }
 
-/* ── 왼쪽 ── */
-.left { width: 310px; flex-shrink: 0; background: #fff; border-right: 1px solid #e2e8f0; display: flex; flex-direction: column; overflow: hidden; }
-.left-scroll { flex: 1; overflow-y: auto; padding: 12px 14px; }
-.left-footer { padding: 10px 14px; border-top: 1px solid #e2e8f0; display: flex; flex-direction: column; gap: 7px; flex-shrink: 0; }
+.process-list { padding: 12px 0; flex: 1; overflow-y: auto; }
+.proc-item { position: relative; padding: 10px 16px 10px 42px; cursor: pointer; transition: background .12s; }
+.proc-item:hover { background: var(--surf2); }
+.proc-item.active { background: var(--blue-lo); }
+.proc-item.active .proc-name { color: var(--blue); font-weight: 700; }
+.proc-item::before { content: ''; position: absolute; left: 32px; top: 38px; bottom: -10px; width: 1px; background: var(--border); }
+.proc-item:last-child::before { display: none; }
+.proc-num { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); width: 22px; height: 22px; border-radius: 50%; background: var(--surf3); border: 1.5px solid var(--border2); display: flex; align-items: center; justify-content: center; font-size: 9px; font-weight: 800; color: var(--slate2); font-family: var(--mono); transition: all .2s; }
+.proc-num.done { background: var(--green-lo); border-color: #86efac; color: var(--green); }
+.proc-num.active { background: var(--blue-lo); border-color: #93c5fd; color: var(--blue); }
+.proc-num.running { background: var(--blue-lo); border-color: var(--blue); color: var(--blue); animation: pulsebg 1.2s infinite; }
+@keyframes pulsebg { 0%,100%{opacity:1}50%{opacity:.4} }
+.proc-name { font-size: 12px; font-weight: 600; color: var(--text2); margin-bottom: 2px; }
+.proc-sub { font-size: 10.5px; color: var(--slate2); line-height: 1.4; }
+.proc-status { font-size: 10px; margin-top: 3px; }
+.proc-status.done { color: var(--green); }
+.proc-status.running { color: var(--blue); }
+.proc-status.error { color: var(--red); }
 
-/* PDF */
-.upload-area { border: 2px dashed #cbd5e1; border-radius: 8px; padding: 13px 12px; text-align: center; cursor: pointer; transition: all .15s; margin-bottom: 10px; background: #f8fafc; position: relative; }
-.upload-area:hover, .upload-area.drag { border-color: #2563eb; background: #eff6ff; }
-.upload-area.has-file { border-color: #86efac; border-style: solid; background: #f0fdf4; }
-.upload-area input[type=file] { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
-.ua-icon { font-size: 20px; margin-bottom: 3px; }
-.ua-title { font-size: 12px; font-weight: 700; margin-bottom: 2px; }
-.ua-sub { font-size: 11px; color: #64748b; }
-.ua-fn { font-size: 11.5px; font-weight: 600; color: #16a34a; margin-top: 3px; }
-.btn-parse { width: 100%; padding: 8px; border-radius: 6px; border: 1px solid #bfdbfe; background: #eff6ff; color: #2563eb; font-size: 12.5px; font-weight: 700; font-family: inherit; cursor: pointer; transition: all .12s; display: flex; align-items: center; justify-content: center; gap: 7px; margin-bottom: 10px; }
-.btn-parse:hover { background: #dbeafe; }
-.btn-parse:disabled { opacity: .4; cursor: not-allowed; }
-.pmsg { display: flex; align-items: center; gap: 8px; padding: 7px 10px; border-radius: 6px; font-size: 12px; margin-bottom: 10px; border: 1px solid #e2e8f0; background: #f8fafc; color: #475569; }
-.pmsg.loading { border-color: #bfdbfe; background: #eff6ff; color: #2563eb; }
-.pmsg.done { border-color: #bbf7d0; background: #f0fdf4; color: #16a34a; }
-.pmsg.error { border-color: #fca5a5; background: #fef2f2; color: #dc2626; }
+.left-actions { padding: 10px 12px; border-top: 1px solid var(--border); flex-shrink: 0; display: flex; flex-direction: column; gap: 6px; }
+.btn-run { width: 100%; padding: 10px; border-radius: 7px; border: none; background: var(--blue); color: #fff; font-size: 12.5px; font-weight: 700; cursor: pointer; font-family: var(--font); display: flex; align-items: center; justify-content: center; gap: 7px; transition: background .15s; }
+.btn-run:hover { background: #1d4ed8; }
+.btn-run:disabled { background: var(--slate2); cursor: not-allowed; }
+.btn-sm-outline { width: 100%; padding: 6px; border-radius: 6px; border: 1px solid var(--border2); background: transparent; color: var(--slate); font-size: 11.5px; font-weight: 600; cursor: pointer; font-family: var(--font); transition: all .12s; }
+.btn-sm-outline:hover { border-color: var(--blue); color: var(--blue); background: var(--blue-lo); }
 
-/* 섹션 */
-.sec { display: flex; align-items: center; gap: 8px; margin: 11px 0 6px; }
-.sec-line { flex: 1; height: 1px; background: #f1f5f9; }
-.sec-label { font-size: 10px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: .05em; white-space: nowrap; }
-
-/* 폼 */
-.field { margin-bottom: 7px; }
-.field label { display: block; font-size: 10px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: .05em; margin-bottom: 3px; }
-.field input, .field select, .field textarea { width: 100%; padding: 6px 9px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 12.5px; font-family: inherit; color: #1e293b; background: #fff; outline: none; transition: border-color .15s; }
-.field input:focus, .field select:focus, .field textarea:focus { border-color: #2563eb; box-shadow: 0 0 0 2px #eff6ff; }
-.field textarea { resize: vertical; min-height: 56px; line-height: 1.5; }
-.field input.hi, .field select.hi, .field textarea.hi { border-color: #86efac; background: #f0fdf4; }
-.row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
-.row3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 5px; }
-
-/* 버튼 */
-.btn-primary { width: 100%; padding: 11px; border-radius: 7px; border: none; cursor: pointer; background: #2563eb; color: #fff; font-size: 13px; font-weight: 700; font-family: inherit; display: flex; align-items: center; justify-content: center; gap: 8px; transition: background .15s; }
-.btn-primary:hover { background: #1d4ed8; }
-.btn-primary:disabled { background: #94a3b8; cursor: not-allowed; }
-.btn-secondary { width: 100%; padding: 7px; border-radius: 6px; border: 1px solid #cbd5e1; background: #fff; color: #475569; font-size: 12px; font-weight: 600; font-family: inherit; cursor: pointer; transition: all .12s; }
-.btn-secondary:hover { border-color: #2563eb; color: #2563eb; }
-
-/* ── 오른쪽 ── */
+/* ── RIGHT ── */
 .right { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
-.tabs { display: flex; background: #fff; border-bottom: 1px solid #e2e8f0; padding: 0 14px; flex-shrink: 0; }
-.tab { padding: 12px 16px; font-size: 12px; font-weight: 600; color: #94a3b8; cursor: pointer; border-bottom: 2px solid transparent; border: none; background: none; font-family: inherit; }
-.tab.on { color: #2563eb; border-bottom: 2px solid #2563eb; }
-.tab:hover { color: #475569; }
+.tabs { display: flex; background: var(--surf); border-bottom: 1px solid var(--border); padding: 0 8px; flex-shrink: 0; overflow-x: auto; }
+.tabs::-webkit-scrollbar { height: 0; }
+.tab { padding: 12px 14px; font-size: 12px; font-weight: 600; color: var(--slate2); border: none; background: none; cursor: pointer; border-bottom: 2px solid transparent; white-space: nowrap; font-family: var(--font); display: flex; align-items: center; gap: 5px; transition: all .12s; }
+.tab:hover { color: var(--text2); }
+.tab.on { color: var(--blue); border-bottom-color: var(--blue); }
 .panel { flex: 1; overflow: hidden; display: none; }
 .panel.on { display: flex; flex-direction: column; }
+.panel-scroll { flex: 1; overflow-y: auto; padding: 16px; }
 
-/* 지도 */
+/* ── MAP TAB ── */
 #map { width: 100%; height: 100%; }
-.map-legend { position: absolute; bottom: 30px; right: 10px; z-index: 1000; background: rgba(255,255,255,.95); border: 1px solid #e2e8f0; border-radius: 7px; padding: 10px 12px; }
-.lr { display: flex; align-items: center; gap: 7px; margin-bottom: 4px; color: #475569; font-size: 11.5px; }
-.lr:last-child { margin-bottom: 0; }
-.ld { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
-.ls { width: 9px; height: 9px; border-radius: 2px; flex-shrink: 0; }
-.map-info { position: absolute; top: 10px; left: 10px; z-index: 1000; background: rgba(255,255,255,.95); border: 1px solid #e2e8f0; border-radius: 6px; padding: 7px 11px; }
-.miv { font-size: 12px; font-weight: 700; }
-.mil { font-size: 9px; color: #94a3b8; }
-.pick-hint { position: absolute; bottom: 30px; left: 10px; z-index: 1000; background: #2563eb; color: #fff; border-radius: 6px; padding: 7px 12px; font-size: 11px; cursor: pointer; display: none; }
+.map-wrap { flex: 1; position: relative; overflow: hidden; }
+.map-overlay { position: absolute; z-index: 500; }
+.mo-tl { top: 10px; left: 10px; }
+.mo-br { bottom: 30px; right: 10px; }
+.map-box { background: rgba(255,255,255,.96); border: 1px solid var(--border); border-radius: 7px; padding: 9px 12px; box-shadow: 0 2px 8px rgba(0,0,0,.07); font-size: 11.5px; }
+.map-legend-title { font-size: 9.5px; font-weight: 700; color: var(--slate); text-transform: uppercase; letter-spacing: .07em; margin-bottom: 7px; }
+.ml-row { display: flex; align-items: center; gap: 7px; margin-bottom: 4px; color: var(--text2); }
+.ml-row:last-child { margin-bottom: 0; }
+.ml-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+.ml-sq { width: 9px; height: 9px; border-radius: 2px; flex-shrink: 0; }
+.ml-tri { width: 0; height: 0; border-left: 5px solid transparent; border-right: 5px solid transparent; border-bottom: 9px solid #dc2626; flex-shrink: 0; }
+.map-pick-hint { position: absolute; bottom: 30px; left: 10px; z-index: 600; background: var(--blue); color: #fff; border-radius: 6px; padding: 7px 12px; font-size: 11px; cursor: pointer; display: none; }
 
-/* 분석 */
-.analysis-wrap { flex: 1; overflow-y: auto; padding: 14px; background: #f1f5f9; }
-.empty-msg { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 340px; text-align: center; color: #94a3b8; gap: 10px; }
-.empty-icon { font-size: 36px; opacity: .35; }
-.empty-text { font-size: 14px; font-weight: 600; }
-.empty-sub { font-size: 12px; line-height: 1.7; }
+/* ── FORM (물건 정보 탭) ── */
+.form-section { margin-bottom: 18px; }
+.form-section-title { font-size: 10.5px; font-weight: 800; color: var(--slate); text-transform: uppercase; letter-spacing: .07em; padding-bottom: 6px; border-bottom: 1px solid var(--border); margin-bottom: 10px; display: flex; align-items: center; gap: 7px; }
+.field { margin-bottom: 8px; }
+.field label { display: block; font-size: 9.5px; font-weight: 700; color: var(--slate); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 3px; }
+.field input, .field select, .field textarea { width: 100%; padding: 7px 10px; border: 1px solid var(--border2); border-radius: 6px; font-size: 12.5px; font-family: var(--font); color: var(--text); background: var(--surf); outline: none; transition: border-color .15s, box-shadow .15s; }
+.field input:focus, .field select:focus, .field textarea:focus { border-color: var(--blue); box-shadow: 0 0 0 2px var(--blue-lo); }
+.field textarea { resize: vertical; min-height: 60px; line-height: 1.55; }
+.field input.hi, .field select.hi, .field textarea.hi { border-color: #86efac; background: var(--green-lo); }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 7px; }
 
-.agent-bar { background: #fff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 11px 14px; display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
-.ag-dot { width: 8px; height: 8px; border-radius: 50%; background: #cbd5e1; flex-shrink: 0; }
-.ag-dot.run { background: #2563eb; animation: pulse 1.2s infinite; }
-.ag-dot.done { background: #16a34a; }
+/* PDF 업로드 */
+.upload-box { border: 2px dashed var(--border2); border-radius: 8px; padding: 16px; text-align: center; cursor: pointer; background: var(--surf2); position: relative; transition: all .15s; margin-bottom: 10px; }
+.upload-box:hover, .upload-box.drag { border-color: var(--blue); background: var(--blue-lo); }
+.upload-box.done { border-color: #86efac; border-style: solid; background: var(--green-lo); }
+.upload-box input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+.ub-icon { font-size: 24px; margin-bottom: 5px; }
+.ub-title { font-size: 12.5px; font-weight: 700; margin-bottom: 2px; }
+.ub-sub { font-size: 11px; color: var(--slate); }
+.btn-parse { width: 100%; padding: 8px; border-radius: 6px; border: 1px solid #bfdbfe; background: var(--blue-lo); color: var(--blue); font-size: 12px; font-weight: 700; cursor: pointer; font-family: var(--font); display: flex; align-items: center; justify-content: center; gap: 7px; transition: all .12s; }
+.btn-parse:hover { background: #dbeafe; }
+.btn-parse:disabled { opacity: .4; cursor: not-allowed; }
+.pmsg { display: flex; align-items: center; gap: 8px; padding: 8px 11px; border-radius: 6px; font-size: 12px; margin-top: 8px; border: 1px solid var(--border); background: var(--surf2); color: var(--text2); }
+.pmsg.loading { border-color: #bfdbfe; background: var(--blue-lo); color: var(--blue); }
+.pmsg.done { border-color: #86efac; background: var(--green-lo); color: var(--green); }
+.pmsg.error { border-color: #fca5a5; background: var(--red-lo); color: var(--red); }
+
+/* ── DC 관리 탭 ── */
+.dc-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.dc-section { background: var(--surf); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+.dc-section-head { padding: 10px 14px; background: var(--surf2); border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+.dc-section-title { font-size: 12px; font-weight: 700; }
+.dc-list { overflow-y: auto; max-height: 280px; }
+.dc-item { padding: 9px 13px; border-bottom: 1px solid var(--surf3); display: flex; align-items: flex-start; gap: 9px; }
+.dc-item:last-child { border-bottom: none; }
+.dc-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; margin-top: 3px; }
+.dc-info { flex: 1; min-width: 0; }
+.dc-name { font-size: 12px; font-weight: 600; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dc-meta { font-size: 10.5px; color: var(--slate); }
+.dc-actions { display: flex; gap: 4px; flex-shrink: 0; }
+.icon-btn { padding: 3px 7px; border: 1px solid var(--border2); border-radius: 4px; background: var(--surf); font-size: 10.5px; cursor: pointer; color: var(--slate); transition: all .1s; }
+.icon-btn:hover { border-color: var(--blue); color: var(--blue); }
+.icon-btn.del:hover { border-color: var(--red); color: var(--red); }
+.btn-add { padding: 5px 12px; border-radius: 5px; border: 1px solid #bfdbfe; background: var(--blue-lo); color: var(--blue); font-size: 11.5px; font-weight: 600; cursor: pointer; font-family: var(--font); transition: all .12s; }
+.btn-add:hover { background: #dbeafe; }
+
+/* ── 고객사 탭 ── */
+.cust-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
+.cust-card { background: var(--surf); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+.cc-head { padding: 12px 14px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; }
+.cc-logo { font-size: 20px; }
+.cc-name { font-size: 14px; font-weight: 800; }
+.cc-body { padding: 12px 14px; }
+.cc-row { display: flex; justify-content: space-between; gap: 8px; padding: 4px 0; border-bottom: 1px solid var(--surf3); font-size: 11.5px; }
+.cc-row:last-child { border-bottom: none; }
+.cc-key { color: var(--slate); flex-shrink: 0; }
+.cc-val { font-weight: 600; text-align: right; color: var(--text2); }
+.cc-reqs { margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--border); }
+.cc-req-title { font-size: 9.5px; font-weight: 800; color: var(--slate); text-transform: uppercase; letter-spacing: .07em; margin-bottom: 5px; }
+.cc-req-item { font-size: 11px; color: var(--text2); padding: 3px 0; display: flex; gap: 5px; line-height: 1.4; }
+.cc-req-item::before { content: '·'; color: var(--slate2); flex-shrink: 0; }
+
+/* ── 위험지역 탭 ── */
+.risk-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.risk-card { background: var(--surf); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+.risk-head { padding: 9px 13px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+.risk-title { font-size: 12px; font-weight: 700; display: flex; align-items: center; gap: 6px; }
+.risk-list { overflow-y: auto; max-height: 220px; }
+.risk-item { padding: 8px 12px; border-bottom: 1px solid var(--surf3); display: flex; align-items: flex-start; gap: 8px; }
+.risk-item:last-child { border-bottom: none; }
+.risk-icon { font-size: 14px; flex-shrink: 0; margin-top: 1px; }
+.risk-info { flex: 1; }
+.risk-name { font-size: 12px; font-weight: 600; margin-bottom: 2px; }
+.risk-meta { font-size: 10.5px; color: var(--slate); }
+.risk-lv { font-size: 9.5px; font-weight: 700; padding: 1px 6px; border-radius: 3px; }
+.rl-h { background: var(--red-lo); color: var(--red); }
+.rl-m { background: var(--amber-lo); color: var(--amber); }
+.rl-l { background: var(--green-lo); color: var(--green); }
+
+/* ── 분석 단계 탭 ── */
+.analysis-wrap { flex: 1; overflow-y: auto; padding: 16px; background: var(--bg); }
+.empty-msg { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 360px; text-align: center; color: var(--slate2); gap: 10px; }
+.empty-icon { font-size: 36px; opacity: .3; }
+.empty-text { font-size: 15px; font-weight: 700; }
+.empty-sub { font-size: 12px; line-height: 1.75; }
+.agent-bar { background: var(--surf); border: 1px solid var(--border); border-radius: 8px; padding: 11px 14px; display: flex; align-items: center; gap: 10px; margin-bottom: 12px; box-shadow: 0 1px 3px rgba(0,0,0,.04); }
+.ag-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--slate3); flex-shrink: 0; }
+.ag-dot.run { background: var(--blue); animation: pulse 1.2s infinite; }
+.ag-dot.done { background: var(--green); }
 @keyframes pulse { 0%,100%{opacity:1}50%{opacity:.3} }
-
-.step-card { background: #fff; border: 1px solid #e2e8f0; border-radius: 8px; margin-bottom: 8px; overflow: hidden; }
-.step-card.running { border-color: #93c5fd; }
+.step-card { background: var(--surf); border: 1px solid var(--border); border-radius: 8px; margin-bottom: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,.04); }
+.step-card.running { border-color: #93c5fd; box-shadow: 0 0 0 3px rgba(37,99,235,.06); }
 .step-card.done { border-color: #86efac; }
 .step-card.error { border-color: #fca5a5; }
-.step-head { padding: 10px 13px; display: flex; align-items: center; gap: 10px; cursor: pointer; }
-.step-head:hover { background: #f8fafc; }
-.snum { width: 24px; height: 24px; border-radius: 6px; background: #f1f5f9; border: 1px solid #e2e8f0; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 800; color: #94a3b8; font-family: monospace; flex-shrink: 0; }
-.snum.run { background: #eff6ff; color: #2563eb; border-color: #bfdbfe; }
-.snum.done { background: #f0fdf4; color: #16a34a; border-color: #bbf7d0; }
-.snum.err { background: #fef2f2; color: #dc2626; }
-.sinfo { flex: 1; }
-.sname { font-size: 12.5px; font-weight: 600; color: #64748b; }
-.sname.run { color: #2563eb; }
-.sname.done { color: #1e293b; }
-.ssub { font-size: 10px; color: #94a3b8; margin-top: 1px; }
-.sscore { font-size: 20px; font-weight: 700; font-family: monospace; margin-left: auto; }
-.step-body { border-top: 1px solid #f1f5f9; padding: 11px 13px; display: none; background: #f8fafc; }
+.step-head { padding: 10px 13px; display: flex; align-items: center; gap: 10px; cursor: pointer; transition: background .1s; }
+.step-head:hover { background: var(--surf2); }
+.s-num { width: 26px; height: 26px; border-radius: 6px; background: var(--surf3); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 800; color: var(--slate2); font-family: var(--mono); flex-shrink: 0; }
+.s-num.run { background: var(--blue-lo); color: var(--blue); border-color: #bfdbfe; }
+.s-num.done { background: var(--green-lo); color: var(--green); border-color: #86efac; }
+.s-num.err { background: var(--red-lo); color: var(--red); }
+.s-info { flex: 1; }
+.s-name { font-size: 12.5px; font-weight: 600; color: var(--slate2); }
+.s-name.run { color: var(--blue); }
+.s-name.done { color: var(--text); }
+.s-sub { font-size: 10px; color: var(--slate2); margin-top: 1px; font-family: var(--mono); }
+.s-score { font-size: 20px; font-weight: 700; font-family: var(--mono); margin-left: auto; }
+.step-body { border-top: 1px solid var(--surf3); padding: 12px 13px; display: none; background: var(--surf2); }
 .step-body.open { display: block; }
-.finding { display: flex; gap: 7px; padding: 4px 0; font-size: 12px; line-height: 1.5; border-bottom: 1px solid #f1f5f9; }
+.finding { display: flex; gap: 7px; padding: 4px 0; font-size: 12px; line-height: 1.5; border-bottom: 1px solid var(--surf3); }
 .finding:last-child { border-bottom: none; }
-.fd { width: 5px; height: 5px; border-radius: 50%; margin-top: 4px; flex-shrink: 0; }
-.fd.g { background: #16a34a; } .fd.w { background: #d97706; } .fd.b { background: #dc2626; }
-.reason { background: #fff; border-left: 3px solid #2563eb; border-radius: 0 5px 5px 0; padding: 8px 11px; margin-top: 8px; font-size: 11.5px; color: #475569; line-height: 1.6; }
+.fd { width: 5px; height: 5px; border-radius: 50%; margin-top: 5px; flex-shrink: 0; }
+.fd.g { background: var(--green); } .fd.w { background: var(--amber); } .fd.b { background: var(--red); }
+.reason-box { background: var(--surf); border-left: 3px solid var(--blue); border-radius: 0 6px 6px 0; padding: 9px 12px; margin-top: 9px; font-size: 11.5px; color: var(--text2); line-height: 1.7; }
 .metrics { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
-.metric { background: #fff; border: 1px solid #e2e8f0; border-radius: 6px; padding: 7px 10px; }
-.metric-l { font-size: 9px; color: #94a3b8; text-transform: uppercase; letter-spacing: .05em; }
-.metric-v { font-size: 14px; font-weight: 700; font-family: monospace; }
+.metric { background: var(--surf); border: 1px solid var(--border); border-radius: 6px; padding: 7px 10px; }
+.metric-l { font-size: 9px; color: var(--slate2); text-transform: uppercase; letter-spacing: .05em; }
+.metric-v { font-size: 14px; font-weight: 700; font-family: var(--mono); }
+.cust-score-grid { display: grid; grid-template-columns: repeat(5,1fr); gap: 6px; margin-top: 10px; }
+.csg-card { background: var(--surf); border: 1px solid var(--border); border-radius: 7px; padding: 9px 6px; text-align: center; }
+.csg-name { font-size: 9.5px; font-weight: 700; margin-bottom: 4px; }
+.csg-score { font-size: 20px; font-weight: 700; font-family: var(--mono); }
+.csg-bar { height: 3px; border-radius: 2px; background: var(--surf3); margin: 4px 0; }
+.csg-fill { height: 100%; border-radius: 2px; }
+.cust-detail { background: var(--surf); border: 1px solid var(--border); border-radius: 7px; padding: 10px 12px; margin-bottom: 8px; }
+.cd-head { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+.cd-logo { font-size: 14px; }
+.cd-name { font-size: 13px; font-weight: 700; }
+.cd-score { font-size: 13px; font-weight: 800; font-family: var(--mono); margin-left: auto; }
+.cd-verdict { font-size: 9.5px; font-weight: 700; padding: 1px 6px; border-radius: 3px; }
+.cd-reason { font-size: 11.5px; color: var(--text2); line-height: 1.6; margin-bottom: 6px; }
+.cd-match-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.cd-match { background: var(--green-lo); border: 1px solid #bbf7d0; border-radius: 5px; padding: 6px 8px; font-size: 10.5px; color: #166534; }
+.cd-gap { background: var(--amber-lo); border: 1px solid #fde68a; border-radius: 5px; padding: 6px 8px; font-size: 10.5px; color: #92400e; }
+.cd-match-title { font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; margin-bottom: 4px; }
+.result-card { background: var(--surf); border: 1px solid var(--border); border-radius: 8px; padding: 14px; margin-bottom: 10px; box-shadow: 0 1px 3px rgba(0,0,0,.04); }
+.rs { font-size: 52px; font-weight: 800; font-family: var(--mono); line-height: 1; }
+.rr { display: inline-block; font-size: 12.5px; font-weight: 700; padding: 3px 10px; border-radius: 4px; margin: 5px 0; }
+.score-5grid { display: grid; grid-template-columns: repeat(5,1fr); gap: 6px; margin-top: 12px; }
+.s5 { background: var(--surf2); border: 1px solid var(--border); border-radius: 6px; padding: 9px; text-align: center; }
+.s5n { font-size: 16px; font-weight: 700; font-family: var(--mono); }
+.s5l { font-size: 9.5px; color: var(--slate); margin-top: 2px; }
 
-/* 고객 카드 (5개) */
-.cust-grid { display: grid; grid-template-columns: repeat(5,1fr); gap: 6px; margin-top: 10px; }
-.cust-card { background: #fff; border: 1px solid #e2e8f0; border-radius: 6px; padding: 9px 7px; text-align: center; }
-.cn { font-size: 10px; font-weight: 700; margin-bottom: 4px; }
-.cs { font-size: 20px; font-weight: 700; font-family: monospace; }
-.cb { height: 3px; border-radius: 2px; background: #f1f5f9; margin: 4px 0; }
-.cf { height: 100%; border-radius: 2px; }
-
-/* 고객 요구사항 상세 */
-.req-table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 11px; }
-.req-table th { background: #f1f5f9; padding: 5px 7px; text-align: left; color: #64748b; font-weight: 700; border: 1px solid #e2e8f0; font-size: 10px; }
-.req-table td { padding: 5px 7px; border: 1px solid #e2e8f0; color: #475569; vertical-align: top; }
-.req-table tr:nth-child(even) td { background: #f8fafc; }
-.badge { display: inline-block; font-size: 9.5px; font-weight: 700; padding: 1px 5px; border-radius: 3px; }
-.bg { background: #f0fdf4; color: #16a34a; }
-.ba { background: #fffbeb; color: #d97706; }
-.br { background: #fef2f2; color: #dc2626; }
-
-/* 종합 결과 */
-.result-card { background: #fff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px; margin-bottom: 10px; }
-.rscore { font-size: 52px; font-weight: 800; font-family: monospace; line-height: 1; }
-.rrec { display: inline-block; font-size: 12px; font-weight: 700; padding: 3px 10px; border-radius: 4px; margin: 5px 0; }
-.score-grid { display: grid; grid-template-columns: repeat(5,1fr); gap: 6px; margin-top: 12px; }
-.sc { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px; text-align: center; }
-.scn { font-size: 16px; font-weight: 700; font-family: monospace; }
-.scl { font-size: 9.5px; color: #64748b; margin-top: 2px; }
-
-/* 보고서 */
-.report-wrap { flex: 1; overflow-y: auto; padding: 14px; background: #f1f5f9; }
-.report-card { background: #fff; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; }
-.rh { padding: 12px 16px; border-bottom: 1px solid #e2e8f0; display: flex; align-items: center; justify-content: space-between; }
+/* ── 보고서 탭 ── */
+.report-card { background: var(--surf); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+.rh { padding: 12px 16px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
 .rh-title { font-size: 13px; font-weight: 700; }
-.rb { padding: 18px; font-size: 13px; line-height: 1.8; color: #1e293b; }
-.rb h1 { font-size: 17px; font-weight: 800; margin: 0 0 14px; padding-bottom: 10px; border-bottom: 2px solid #e2e8f0; }
-.rb h2 { font-size: 13.5px; font-weight: 700; margin: 18px 0 7px; color: #2563eb; }
-.rb h3 { font-size: 12.5px; font-weight: 700; margin: 12px 0 4px; }
-.rb p { margin-bottom: 8px; color: #475569; }
-.rb ul { padding-left: 16px; margin-bottom: 8px; }
-.rb li { margin-bottom: 3px; color: #475569; }
-.rb strong { color: #1e293b; }
-.re { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 180px; color: #94a3b8; gap: 8px; }
-.btn-copy { padding: 4px 12px; border: 1px solid #cbd5e1; border-radius: 5px; background: #fff; font-size: 11px; font-weight: 600; cursor: pointer; font-family: inherit; color: #475569; }
-.btn-copy:hover { border-color: #2563eb; color: #2563eb; }
+.report-body { padding: 20px; font-size: 13px; line-height: 1.85; color: var(--text); }
+.report-body h1 { font-size: 18px; font-weight: 800; margin: 0 0 14px; padding-bottom: 10px; border-bottom: 2px solid var(--border); }
+.report-body h2 { font-size: 14px; font-weight: 700; margin: 20px 0 7px; color: var(--blue); display: flex; align-items: center; gap: 7px; }
+.report-body h2::before { content: ''; display: block; width: 3px; height: 15px; background: var(--blue); border-radius: 2px; flex-shrink: 0; }
+.report-body h3 { font-size: 13px; font-weight: 700; margin: 13px 0 5px; }
+.report-body p { margin-bottom: 9px; color: var(--text2); }
+.report-body ul { padding-left: 18px; margin-bottom: 9px; }
+.report-body li { margin-bottom: 3px; color: var(--text2); }
+.report-body strong { color: var(--text); }
+.report-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 200px; color: var(--slate2); gap: 8px; }
 
+/* ── 공통 유틸 ── */
 .tag { display: inline-block; font-size: 9.5px; font-weight: 700; padding: 1px 6px; border-radius: 3px; }
-.tag-g { background: #f0fdf4; color: #16a34a; } .tag-a { background: #fffbeb; color: #d97706; }
-.tag-r { background: #fef2f2; color: #dc2626; } .tag-b { background: #eff6ff; color: #2563eb; }
-.spin { display: inline-block; width: 12px; height: 12px; border: 2px solid #e2e8f0; border-top-color: #2563eb; border-radius: 50%; animation: spin .6s linear infinite; vertical-align: middle; }
+.tag-g { background: var(--green-lo); color: var(--green); }
+.tag-a { background: var(--amber-lo); color: var(--amber); }
+.tag-r { background: var(--red-lo); color: var(--red); }
+.tag-b { background: var(--blue-lo); color: var(--blue); }
+.spin { display: inline-block; width: 12px; height: 12px; border: 2px solid var(--border2); border-top-color: var(--blue); border-radius: 50%; animation: spin .6s linear infinite; vertical-align: middle; }
 @keyframes spin { to { transform: rotate(360deg); } }
 .hidden { display: none !important; }
+.btn-copy { padding: 4px 12px; border: 1px solid var(--border2); border-radius: 5px; background: var(--surf); font-size: 11px; font-weight: 600; cursor: pointer; font-family: var(--font); color: var(--slate); }
+.btn-copy:hover { border-color: var(--blue); color: var(--blue); }
+
+/* 모달 */
+.modal-bg { position: fixed; inset: 0; background: rgba(15,23,42,.4); z-index: 9000; display: flex; align-items: center; justify-content: center; }
+.modal { background: var(--surf); border-radius: 12px; width: 460px; max-height: 80vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,.15); }
+.modal-head { padding: 16px 18px; border-bottom: 1px solid var(--border); font-size: 14px; font-weight: 700; display: flex; align-items: center; justify-content: space-between; }
+.modal-body { padding: 16px 18px; }
+.modal-foot { padding: 12px 18px; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 8px; }
+.btn-modal-ok { padding: 8px 18px; border-radius: 6px; border: none; background: var(--blue); color: #fff; font-size: 13px; font-weight: 700; cursor: pointer; font-family: var(--font); }
+.btn-modal-ok:hover { background: #1d4ed8; }
+.btn-modal-cancel { padding: 8px 14px; border-radius: 6px; border: 1px solid var(--border2); background: transparent; color: var(--slate); font-size: 13px; font-weight: 600; cursor: pointer; font-family: var(--font); }
+.modal-close { background: none; border: none; font-size: 18px; cursor: pointer; color: var(--slate2); padding: 0; line-height: 1; }
+.modal-close:hover { color: var(--red); }
 </style>
 </head>
 <body>
 <div class="app">
 
-  <div class="topbar">
-    <div class="topbar-title">DC 물건 분석 에이전트</div>
-    <div class="topbar-badge">안산 권역 · D단계</div>
-    <div class="topbar-right">
-      <div class="step-dot" id="d1"></div><div class="step-dot" id="d2"></div>
-      <div class="step-dot" id="d3"></div><div class="step-dot" id="d4"></div>
-      <div class="step-dot" id="d5"></div><div class="step-dot" id="d6"></div>
+<!-- ── TOPBAR ── -->
+<div class="topbar">
+  <div class="tb-title">DC 물건 분석 에이전트</div>
+  <div class="tb-badge">안산 권역 · D단계</div>
+  <div class="tb-right">
+    <span class="tb-key-label">🔑 API 키</span>
+    <input type="password" class="tb-key-input" id="api-input" placeholder="sk-ant-api03-..." autocomplete="off" onkeydown="if(event.key==='Enter')saveKey()">
+    <button class="tb-key-btn" onclick="saveKey()">저장</button>
+    <button class="tb-key-test" id="test-btn" onclick="testConnection()" disabled>연동 확인</button>
+    <span id="key-status" class="tb-key-no">미설정</span>
+  </div>
+</div>
+
+<div class="layout">
+
+  <!-- ── LEFT: 프로세스 패널 ── -->
+  <div class="left">
+    <div class="left-title">분석 프로세스</div>
+    <div class="process-list" id="proc-list">
+      <div class="proc-item" id="proc-1" onclick="goProc(1)">
+        <div class="proc-num" id="pn-1">1</div>
+        <div class="proc-name">IM 자료 등록</div>
+        <div class="proc-sub">PDF 업로드 또는 직접 입력</div>
+        <div class="proc-status" id="ps-1"></div>
+      </div>
+      <div class="proc-item" id="proc-2" onclick="goProc(2)">
+        <div class="proc-num" id="pn-2">2</div>
+        <div class="proc-name">DC 현황 확인</div>
+        <div class="proc-sub">자사·경쟁사 DC 정보</div>
+        <div class="proc-status" id="ps-2"></div>
+      </div>
+      <div class="proc-item" id="proc-3" onclick="goProc(3)">
+        <div class="proc-num" id="pn-3">3</div>
+        <div class="proc-name">타겟 고객사 확인</div>
+        <div class="proc-sub">5개 고객사 요구사항</div>
+        <div class="proc-status" id="ps-3"></div>
+      </div>
+      <div class="proc-item" id="proc-4" onclick="goProc(4)">
+        <div class="proc-num" id="pn-4">4</div>
+        <div class="proc-name">권역 위험지역 확인</div>
+        <div class="proc-sub">입지 리스크 정보</div>
+        <div class="proc-status" id="ps-4"></div>
+      </div>
+      <div class="proc-item" id="proc-5" onclick="goProc(5)">
+        <div class="proc-num" id="pn-5">5</div>
+        <div class="proc-name">AI 6단계 분석</div>
+        <div class="proc-sub">물건·연계·권역·고객 분석</div>
+        <div class="proc-status" id="ps-5"></div>
+      </div>
+      <div class="proc-item" id="proc-6" onclick="goProc(6)">
+        <div class="proc-num" id="pn-6">6</div>
+        <div class="proc-name">타당성 보고서</div>
+        <div class="proc-sub">착수 판단 · 권고</div>
+        <div class="proc-status" id="ps-6"></div>
+      </div>
+    </div>
+    <div class="left-actions">
+      <button class="btn-run" id="run-btn" onclick="runAnalysis()">▶ 분석 시작</button>
+      <button class="btn-sm-outline" onclick="switchTab('map', null)">🗺 지도 보기</button>
     </div>
   </div>
 
-  <div class="api-banner">
-    <span>🔑</span>
-    <label>Anthropic API 키</label>
-    <input type="password" id="api-key-input" placeholder="sk-ant-api03-..." autocomplete="off">
-    <button class="api-save" onclick="saveKey()">저장</button>
-    <span id="api-status" class="api-no">미설정</span>
-    <span class="api-help">발급: <a href="https://console.anthropic.com" target="_blank">console.anthropic.com</a> → API Keys</span>
-  </div>
-
-  <div class="body">
-    <div class="left">
-      <div class="left-scroll">
-
-        <div class="sec" style="margin-top:4px;"><div class="sec-label">📄 IM 자료 (PDF)</div><div class="sec-line"></div></div>
-        <div class="upload-area" id="upload-area"
-          ondragover="event.preventDefault();this.classList.add('drag')"
-          ondragleave="this.classList.remove('drag')"
-          ondrop="handleDrop(event)">
-          <input type="file" accept=".pdf" onchange="handleFile(this.files[0])">
-          <div class="ua-icon" id="ua-icon">📄</div>
-          <div class="ua-title" id="ua-title">PDF 파일 업로드</div>
-          <div class="ua-sub">클릭하거나 드래그 · IM / 투자제안서</div>
-          <div class="ua-fn hidden" id="ua-fn"></div>
-        </div>
-        <button class="btn-parse" id="btn-parse" onclick="parsePDF()" disabled>
-          <span id="pi">✦</span><span id="pl">AI로 정보 자동 추출</span>
-        </button>
-        <div class="pmsg hidden" id="pmsg"><span id="pm-icon"></span><span id="pm-text"></span></div>
-
-        <div class="sec"><div class="sec-label">기본 정보</div><div class="sec-line"></div></div>
-        <div class="field"><label>물건명</label><input id="f-name" class="hi" value="안산 글로벌메타 데이터센터"></div>
-        <div class="field"><label>소재지</label><input id="f-addr" class="hi" value="경기도 안산시 단원구 원시동 726-4"></div>
-        <div class="row2">
-          <div class="field"><label>매각사</label><input id="f-investor" class="hi" value="신영(SHINYOUNG)"></div>
-          <div class="field"><label>접수일</label><input id="f-date" type="date"></div>
-        </div>
-
-        <div class="sec"><div class="sec-label">규모 · 전력</div><div class="sec-line"></div></div>
-        <div class="row3">
-          <div class="field"><label>부지 (평)</label><input id="f-area" type="number" class="hi" value="3546"></div>
-          <div class="field"><label>수전 (MW)</label><input id="f-power" type="number" class="hi" value="60"></div>
-          <div class="field"><label>토지가 (억)</label><input id="f-price" type="number" class="hi" value="500"></div>
-        </div>
-        <div class="row3">
-          <div class="field"><label>IT Load(MW)</label><input id="f-itload" type="number" class="hi" value="40"></div>
-          <div class="field"><label>랙 수</label><input id="f-racks" type="number" class="hi" value="4800"></div>
-          <div class="field"><label>목표 Tier</label>
-            <select id="f-tier"><option>Tier III</option><option>Tier IV</option><option>Tier II</option></select>
-          </div>
-        </div>
-        <div class="row2">
-          <div class="field"><label>수전 방식</label>
-            <select id="f-voltage"><option>154kV (신시화 345kV 경유)</option><option>154kV</option><option>345kV</option><option>22.9kV</option></select>
-          </div>
-          <div class="field"><label>목표 PUE</label><input id="f-pue" type="number" step="0.01" class="hi" value="1.5"></div>
-        </div>
-
-        <div class="sec"><div class="sec-label">입지 · 환경</div><div class="sec-line"></div></div>
-        <div class="row2">
-          <div class="field"><label>용도지역</label>
-            <select id="f-zone"><option>일반공업지역</option><option>준공업지역</option><option>계획관리지역</option><option>자연녹지지역</option></select>
-          </div>
-          <div class="field"><label>지반 상태</label>
-            <select id="f-soil"><option>양호 (기반암)</option><option>보통 (사질토)</option><option>연약 지반</option></select>
-          </div>
-        </div>
-        <div class="row2">
-          <div class="field"><label>변전소 (km)</label><input id="f-sub" type="number" step="0.1" class="hi" value="0.3"></div>
-          <div class="field"><label>IC (km)</label><input id="f-ic" type="number" step="0.1" placeholder="km"></div>
-        </div>
-        <div class="row2">
-          <div class="field"><label>냉각 방식</label>
-            <select id="f-cooling"><option>수냉식</option><option>공랭식</option><option>액침냉각</option><option>하이브리드</option></select>
-          </div>
-          <div class="field"><label>냉각수</label>
-            <select id="f-water"><option>공급 가능 (140ton/h)</option><option>협의 필요</option><option>불가</option></select>
-          </div>
-        </div>
-
-        <div class="sec"><div class="sec-label">지도 위치</div><div class="sec-line"></div></div>
-        <div class="row2">
-          <div class="field"><label>위도</label><input id="f-lat" type="number" step="0.0001" class="hi" value="37.3192"></div>
-          <div class="field"><label>경도</label><input id="f-lng" type="number" step="0.0001" class="hi" value="126.8012"></div>
-        </div>
-        <button class="btn-secondary" style="margin-bottom:10px;" onclick="startPick()">🗺 지도 클릭으로 좌표 수정</button>
-
-        <div class="sec"><div class="sec-label">IM 주요 내용</div><div class="sec-line"></div></div>
-        <div class="field">
-          <textarea id="f-im" class="hi" style="min-height:85px;">반월국가산업단지 내 일반공업지역(지원시설구역 변경 완료). 수전 60MW, IT Load 40MW, 4,800랙, PUE 1.5. 신시화 345kV S/S에서 사용·예비 2회선 수전, 전기사용계약 완료(23.11.28), 변전소 구내 인입공사 완료(24.05). 건축허가 완료(23.07.05), 설계변경 후 2026년 2Q 본착공 예정. 층수·높이 제한 없어 고밀도 랙 수용 가능. 상수 140ton/h 공급. 전력인입 경로·부지 인근 주거지역 없어 민원 리스크 최소. 토지가 500억(MW당 8.33억).</textarea>
-        </div>
-
-      </div>
-      <div class="left-footer">
-        <button class="btn-secondary" onclick="clearForm()">🔄 폼 초기화</button>
-        <button class="btn-primary" id="run-btn" onclick="runAnalysis()">▶ AI 에이전트 분석 시작</button>
-      </div>
+  <!-- ── RIGHT: 탭 ── -->
+  <div class="right">
+    <div class="tabs">
+      <button class="tab" onclick="switchTab('map',this)">🗺 지도</button>
+      <button class="tab on" onclick="switchTab('property',this)">📄 물건 정보</button>
+      <button class="tab" onclick="switchTab('dc',this)">🏢 DC 현황</button>
+      <button class="tab" onclick="switchTab('customer',this)">👥 타겟 고객사</button>
+      <button class="tab" onclick="switchTab('risk',this)">⚠ 위험지역</button>
+      <button class="tab" onclick="switchTab('analysis',this)">◈ 분석 단계</button>
+      <button class="tab" onclick="switchTab('report',this)">≡ 보고서</button>
     </div>
 
-    <div class="right">
-      <div class="tabs">
-        <button class="tab on" onclick="switchTab('map',this)">🗺 지도</button>
-        <button class="tab" onclick="switchTab('analysis',this)">◈ 분석 단계</button>
-        <button class="tab" onclick="switchTab('report',this)">≡ 보고서</button>
-      </div>
-
-      <div class="panel on" id="panel-map" style="position:relative;">
+    <!-- ── TAB: 지도 ── -->
+    <div class="panel" id="panel-map">
+      <div class="map-wrap">
         <div id="map"></div>
-        <div class="map-info">
-          <div class="mil">대상 물건</div>
-          <div class="miv" id="map-info-val">안산 글로벌메타 데이터센터</div>
-        </div>
-        <div class="map-legend">
-          <div class="lr"><div class="ld" style="background:#2563eb;"></div>대상 물건</div>
-          <div class="lr"><div class="ld" style="background:#0891b2;"></div>자사 IDC</div>
-          <div class="lr"><div class="ld" style="background:#dc2626;"></div>경쟁 DC</div>
-          <div class="lr"><div class="ld" style="background:#7c3aed;"></div>예정 DC</div>
-          <div class="lr"><div class="ls" style="background:#d97706;"></div>154kV 변전소</div>
-        </div>
-        <div class="pick-hint" id="pick-hint" onclick="cancelPick()">지도 클릭으로 위치 설정 · 취소</div>
-      </div>
-
-      <div class="panel" id="panel-analysis">
-        <div class="analysis-wrap">
-          <div class="empty-msg" id="empty-msg">
-            <div class="empty-icon">◈</div>
-            <div class="empty-text">분석 대기 중</div>
-            <div class="empty-sub">① 상단에 API 키 입력 → 저장<br>② 물건 정보 확인<br>③ <b>AI 에이전트 분석 시작</b></div>
+        <div class="map-overlay mo-tl">
+          <div class="map-box">
+            <div style="font-size:9px;color:var(--slate);margin-bottom:2px;">대상 물건</div>
+            <div style="font-size:12.5px;font-weight:700;" id="map-prop-name">—</div>
           </div>
-          <div id="analysis-content" class="hidden">
-            <div class="agent-bar">
-              <div class="ag-dot" id="ag-dot"></div>
-              <div>
-                <div style="font-size:11px;color:#64748b;" id="ag-label">STATUS</div>
-                <div style="font-size:13px;font-weight:700;" id="ag-state">준비 중...</div>
+        </div>
+        <div class="map-overlay mo-br">
+          <div class="map-box">
+            <div class="map-legend-title">범례</div>
+            <div class="ml-row"><div class="ml-dot" style="background:#2563eb;"></div>대상 물건</div>
+            <div class="ml-row"><div class="ml-dot" style="background:#0891b2;"></div>자사 IDC</div>
+            <div class="ml-row"><div class="ml-dot" style="background:#dc2626;"></div>경쟁 DC</div>
+            <div class="ml-row"><div class="ml-dot" style="background:#7c3aed;"></div>예정 DC</div>
+            <div class="ml-row"><div class="ml-sq" style="background:#d97706;"></div>변전소</div>
+            <div class="ml-row"><div class="ml-tri"></div>위험지역</div>
+          </div>
+        </div>
+        <div class="map-pick-hint" id="pick-hint" onclick="cancelPick()">지도 클릭으로 좌표 설정 · 취소</div>
+      </div>
+    </div>
+
+    <!-- ── TAB: 물건 정보 ── -->
+    <div class="panel on" id="panel-property">
+      <div class="panel-scroll">
+        <div style="max-width:780px;margin:0 auto;">
+
+          <!-- PDF 업로드 -->
+          <div class="form-section">
+            <div class="form-section-title">📄 IM 자료 업로드</div>
+            <div class="upload-box" id="upload-box"
+              ondragover="event.preventDefault();this.classList.add('drag')"
+              ondragleave="this.classList.remove('drag')"
+              ondrop="handleDrop(event)">
+              <input type="file" accept=".pdf" onchange="handleFile(this.files[0])">
+              <div class="ub-icon" id="ub-icon">📄</div>
+              <div class="ub-title" id="ub-title">PDF 파일을 업로드하세요</div>
+              <div class="ub-sub" id="ub-sub">클릭하거나 드래그 · IM / 투자제안서</div>
+            </div>
+            <button class="btn-parse" id="btn-parse" onclick="parsePDF()" disabled>
+              <span id="pi">✦</span><span id="pl">AI로 정보 자동 추출</span>
+            </button>
+            <div class="pmsg hidden" id="pmsg"><span id="pm-i"></span>&nbsp;<span id="pm-t"></span></div>
+          </div>
+
+          <!-- 기본 정보 -->
+          <div class="form-section">
+            <div class="form-section-title">기본 정보</div>
+            <div class="field"><label>물건명</label><input id="f-name" class="hi" value="안산 글로벌메타 데이터센터"></div>
+            <div class="field"><label>소재지</label><input id="f-addr" class="hi" value="경기도 안산시 단원구 원시동 726-4"></div>
+            <div class="grid3">
+              <div class="field"><label>매각사</label><input id="f-investor" class="hi" value="신영(SHINYOUNG)"></div>
+              <div class="field"><label>접수일</label><input id="f-date" type="date"></div>
+              <div class="field"><label>목표 Tier</label>
+                <select id="f-tier"><option>Tier III</option><option>Tier IV</option><option>Tier II</option></select>
               </div>
             </div>
-            <div id="steps-area"></div>
-            <div id="result-area" class="hidden"></div>
           </div>
-        </div>
-      </div>
 
-      <div class="panel" id="panel-report">
-        <div class="report-wrap">
-          <div class="report-card">
-            <div class="rh">
-              <div class="rh-title">D단계 착수 타당성 보고서</div>
-              <button class="btn-copy" onclick="copyReport()">복사</button>
+          <!-- 규모·전력 -->
+          <div class="form-section">
+            <div class="form-section-title">규모 · 전력</div>
+            <div class="grid3">
+              <div class="field"><label>부지 (평)</label><input id="f-area" type="number" class="hi" value="3546"></div>
+              <div class="field"><label>수전 (MW)</label><input id="f-power" type="number" class="hi" value="60"></div>
+              <div class="field"><label>토지가 (억)</label><input id="f-price" type="number" class="hi" value="500"></div>
             </div>
-            <div id="report-body"><div class="re"><div style="font-size:24px;opacity:.3;">≡</div><div>분석 완료 후 보고서가 생성됩니다</div></div></div>
+            <div class="grid3">
+              <div class="field"><label>IT Load (MW)</label><input id="f-itload" type="number" class="hi" value="40"></div>
+              <div class="field"><label>랙 수</label><input id="f-racks" type="number" class="hi" value="4800"></div>
+              <div class="field"><label>목표 PUE</label><input id="f-pue" type="number" step="0.01" class="hi" value="1.5"></div>
+            </div>
+            <div class="grid2">
+              <div class="field"><label>수전 방식</label>
+                <select id="f-voltage"><option>154kV (신시화 345kV 경유)</option><option>154kV</option><option>345kV</option><option>22.9kV</option></select>
+              </div>
+              <div class="field"><label>냉각 방식</label>
+                <select id="f-cooling"><option>수냉식</option><option>공랭식</option><option>액침냉각</option><option>하이브리드</option></select>
+              </div>
+            </div>
+          </div>
+
+          <!-- 입지·환경 -->
+          <div class="form-section">
+            <div class="form-section-title">입지 · 환경</div>
+            <div class="grid3">
+              <div class="field"><label>용도지역</label>
+                <select id="f-zone"><option>일반공업지역</option><option>준공업지역</option><option>계획관리지역</option><option>자연녹지지역</option></select>
+              </div>
+              <div class="field"><label>지반 상태</label>
+                <select id="f-soil"><option>양호 (기반암)</option><option>보통 (사질토)</option><option>연약 지반</option></select>
+              </div>
+              <div class="field"><label>냉각수</label>
+                <select id="f-water"><option>공급 가능 (140ton/h)</option><option>협의 필요</option><option>불가</option></select>
+              </div>
+            </div>
+            <div class="grid2">
+              <div class="field"><label>변전소 거리 (km)</label><input id="f-sub" type="number" step="0.1" class="hi" value="0.3"></div>
+              <div class="field"><label>IC 거리 (km)</label><input id="f-ic" type="number" step="0.1" placeholder="km"></div>
+            </div>
+          </div>
+
+          <!-- 지도 위치 -->
+          <div class="form-section">
+            <div class="form-section-title">지도 위치</div>
+            <div class="grid2" style="margin-bottom:8px;">
+              <div class="field"><label>위도</label><input id="f-lat" type="number" step="0.0001" class="hi" value="37.3192"></div>
+              <div class="field"><label>경도</label><input id="f-lng" type="number" step="0.0001" class="hi" value="126.8012"></div>
+            </div>
+            <button class="btn-sm-outline" onclick="startPick()">🗺 지도 클릭으로 좌표 설정</button>
+          </div>
+
+          <!-- IM 내용 -->
+          <div class="form-section">
+            <div class="form-section-title">IM 주요 내용</div>
+            <div class="field">
+              <textarea id="f-im" class="hi" style="min-height:90px;">반월국가산업단지 내 일반공업지역(지원시설구역 변경 완료). 수전 60MW, IT Load 40MW, 4,800랙, PUE 1.5. 신시화 345kV S/S에서 사용·예비 2회선 수전, 전기사용계약 완료(23.11.28), 변전소 구내 인입공사 완료(24.05). 건축허가 완료(23.07.05), 설계변경 후 2026년 2Q 본착공 예정. 층수·높이 제한 없어 고밀도 랙 수용 가능. 상수 140ton/h 공급. 민원 리스크 최소. 토지가 500억(MW당 8.33억).</textarea>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- ── TAB: DC 현황 ── -->
+    <div class="panel" id="panel-dc">
+      <div class="panel-scroll">
+        <div class="dc-grid">
+          <!-- 자사 IDC -->
+          <div class="dc-section">
+            <div class="dc-section-head">
+              <div class="dc-section-title">🔵 자사 IDC</div>
+              <button class="btn-add" onclick="openDCModal('own')">+ 추가</button>
+            </div>
+            <div class="dc-list" id="own-dc-list"></div>
+          </div>
+          <!-- 경쟁사 DC -->
+          <div class="dc-section">
+            <div class="dc-section-head">
+              <div class="dc-section-title">🔴 경쟁사 DC</div>
+              <button class="btn-add" onclick="openDCModal('comp')">+ 추가</button>
+            </div>
+            <div class="dc-list" id="comp-dc-list"></div>
+          </div>
+        </div>
+        <!-- 변전소 -->
+        <div class="dc-section" style="margin-top:14px;">
+          <div class="dc-section-head">
+            <div class="dc-section-title">🟡 154kV / 345kV 변전소</div>
+            <button class="btn-add" onclick="openDCModal('sub')">+ 추가</button>
+          </div>
+          <div class="dc-list" id="sub-list" style="max-height:200px;display:grid;grid-template-columns:1fr 1fr;"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── TAB: 타겟 고객사 ── -->
+    <div class="panel" id="panel-customer">
+      <div class="panel-scroll">
+        <div class="cust-cards" id="cust-cards-container"></div>
+      </div>
+    </div>
+
+    <!-- ── TAB: 위험지역 ── -->
+    <div class="panel" id="panel-risk">
+      <div class="panel-scroll">
+        <div style="display:flex;justify-content:flex-end;margin-bottom:12px;">
+          <button class="btn-add" onclick="openRiskModal()">+ 위험지역 추가</button>
+        </div>
+        <div class="risk-grid" id="risk-grid"></div>
+      </div>
+    </div>
+
+    <!-- ── TAB: 분석 단계 ── -->
+    <div class="panel" id="panel-analysis">
+      <div class="analysis-wrap">
+        <div class="empty-msg" id="empty-msg">
+          <div class="empty-icon">◈</div>
+          <div class="empty-text">분석 대기 중</div>
+          <div class="empty-sub">① API 키 입력 → 저장<br>② 물건 정보 확인<br>③ 왼쪽 <b>분석 시작</b> 버튼 클릭</div>
+        </div>
+        <div id="analysis-content" class="hidden">
+          <div class="agent-bar">
+            <div class="ag-dot" id="ag-dot"></div>
+            <div>
+              <div style="font-size:11px;color:var(--slate);" id="ag-label">STATUS</div>
+              <div style="font-size:13px;font-weight:700;" id="ag-state">준비 중...</div>
+            </div>
+          </div>
+          <div id="steps-area"></div>
+          <div id="result-area" class="hidden"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── TAB: 보고서 ── -->
+    <div class="panel" id="panel-report">
+      <div class="panel-scroll">
+        <div class="report-card">
+          <div class="rh">
+            <div class="rh-title">D단계 착수 타당성 보고서</div>
+            <button class="btn-copy" onclick="copyReport()">복사</button>
+          </div>
+          <div id="report-body">
+            <div class="report-empty"><div style="font-size:28px;opacity:.25;">≡</div><div>분석 완료 후 자동 생성됩니다</div></div>
           </div>
         </div>
       </div>
+    </div>
+
+  </div><!-- right -->
+</div><!-- layout -->
+
+<!-- ── DC 모달 ── -->
+<div class="modal-bg hidden" id="dc-modal">
+  <div class="modal">
+    <div class="modal-head"><span id="dc-modal-title">DC 추가</span><button class="modal-close" onclick="closeDCModal()">×</button></div>
+    <div class="modal-body">
+      <div class="grid2">
+        <div class="field"><label>이름</label><input id="dm-name" placeholder="IDC명"></div>
+        <div class="field"><label>용량 (MW)</label><input id="dm-mw" type="number" placeholder="20"></div>
+      </div>
+      <div class="grid2">
+        <div class="field"><label>위도</label><input id="dm-lat" type="number" step="0.0001" placeholder="37.xxxx"></div>
+        <div class="field"><label>경도</label><input id="dm-lng" type="number" step="0.0001" placeholder="126.xxxx"></div>
+      </div>
+      <div class="grid2">
+        <div class="field"><label>준공년도</label><input id="dm-built" type="number" placeholder="2024"></div>
+        <div class="field"><label>가동률 / 상태</label><input id="dm-status" placeholder="85% / 운영중"></div>
+      </div>
+      <div class="field"><label>비고</label><input id="dm-note" placeholder="특이사항"></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn-modal-cancel" onclick="closeDCModal()">취소</button>
+      <button class="btn-modal-ok" onclick="saveDCItem()">저장</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── 위험지역 모달 ── -->
+<div class="modal-bg hidden" id="risk-modal">
+  <div class="modal">
+    <div class="modal-head"><span>위험지역 추가</span><button class="modal-close" onclick="closeRiskModal()">×</button></div>
+    <div class="modal-body">
+      <div class="grid2">
+        <div class="field"><label>지역명</label><input id="rm-name" placeholder="침수위험구역 A"></div>
+        <div class="field"><label>위험 유형</label>
+          <select id="rm-type">
+            <option value="flood">🌊 침수 위험</option>
+            <option value="quake">🔴 지진 취약</option>
+            <option value="fire">🔥 화재 위험</option>
+            <option value="civil">📢 민원 위험</option>
+            <option value="power">⚡ 전력 불안정</option>
+            <option value="other">⚠ 기타</option>
+          </select>
+        </div>
+      </div>
+      <div class="grid2">
+        <div class="field"><label>위도</label><input id="rm-lat" type="number" step="0.0001" placeholder="37.xxxx"></div>
+        <div class="field"><label>경도</label><input id="rm-lng" type="number" step="0.0001" placeholder="126.xxxx"></div>
+      </div>
+      <div class="grid2">
+        <div class="field"><label>위험 수준</label>
+          <select id="rm-level"><option value="high">높음</option><option value="mid">보통</option><option value="low">낮음</option></select>
+        </div>
+        <div class="field"><label>반경 (km)</label><input id="rm-radius" type="number" step="0.1" value="0.5"></div>
+      </div>
+      <div class="field"><label>설명</label><input id="rm-desc" placeholder="위험 사유 또는 출처"></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn-modal-cancel" onclick="closeRiskModal()">취소</button>
+      <button class="btn-modal-ok" onclick="saveRiskItem()">저장</button>
     </div>
   </div>
 </div>
 
 <script>
-// ─────────────────────────────────────────────
-// 데이터
-// ─────────────────────────────────────────────
-const OWN = [
-  { name:'자사 안산 IDC (반월)',  lat:37.3458, lng:126.7951, mw:15, racks:2800, built:2018, note:'반월 국가산업단지 내' },
-  { name:'자사 인천 IDC (청라)',  lat:37.5325, lng:126.6307, mw:22, racks:4200, built:2020, note:'인천경제자유구역, 국제해저케이블 IX' },
-  { name:'자사 수원 IDC (영통)',  lat:37.2827, lng:127.0428, mw:12, racks:2200, built:2015, note:'삼성전자 수원캠퍼스 2.5km' },
-  { name:'자사 서울 IDC (마포)',  lat:37.5506, lng:126.9021, mw:8,  racks:1500, built:2012, note:'서울 도심 IXP' },
+// ════════════════════════════════════════════
+//  데이터 스토어
+// ════════════════════════════════════════════
+let ownDCs = [
+  { id:'o1', name:'자사 안산 IDC (반월)',  lat:37.3458, lng:126.7951, mw:15, built:2018, status:'운영중', note:'반월 국가산업단지 내' },
+  { id:'o2', name:'자사 인천 IDC (청라)',  lat:37.5325, lng:126.6307, mw:22, built:2020, status:'운영중', note:'인천경제자유구역' },
+  { id:'o3', name:'자사 수원 IDC (영통)',  lat:37.2827, lng:127.0428, mw:12, built:2015, status:'운영중', note:'삼성전자 수원캠퍼스 2.5km' },
+  { id:'o4', name:'자사 서울 IDC (마포)',  lat:37.5506, lng:126.9021, mw:8,  built:2012, status:'운영중', note:'서울 도심 IXP' },
 ];
-const COMP = [
-  { name:'카카오 DC 안산',    lat:37.3156, lng:126.8369, mw:32, occ:'85%',   tag:'운영', color:'#dc2626', note:'한양대 ERICA 인근' },
-  { name:'KT IDC 안산',      lat:37.3912, lng:126.8156, mw:18, occ:'88%',   tag:'운영', color:'#dc2626', note:'상록수역 인근' },
-  { name:'LGU+ 평촌 IDC',    lat:37.3897, lng:126.9557, mw:30, occ:'91%',   tag:'운영', color:'#dc2626', note:'안양 평촌' },
-  { name:'NHN 클라우드 안산', lat:37.3200, lng:126.7600, mw:50, occ:'공사중', tag:'예정', color:'#7c3aed', note:'시화 MTV, 154kV 신설 예정' },
+let compDCs = [
+  { id:'c1', name:'카카오 DC 안산',    lat:37.3156, lng:126.8369, mw:32, built:2023, status:'85% 가동', note:'한양대 ERICA 인근, 154kV', tag:'운영' },
+  { id:'c2', name:'KT IDC 안산',      lat:37.3912, lng:126.8156, mw:18, built:2019, status:'88% 가동', note:'상록수역 인근', tag:'운영' },
+  { id:'c3', name:'LGU+ 평촌 IDC',    lat:37.3897, lng:126.9557, mw:30, built:2016, status:'91% 가동', note:'안양 평촌 IX', tag:'운영' },
+  { id:'c4', name:'NHN 클라우드 안산', lat:37.3200, lng:126.7600, mw:50, built:2026, status:'공사중',   note:'시화 MTV, 154kV 신설', tag:'예정' },
 ];
-const SUBS = [
-  { name:'신시화 345kV 변전소 (수전처)', lat:37.3298, lng:126.7234, cap:'345kV', avail:'60MW 계약 완료' },
-  { name:'안산 154kV 변전소',  lat:37.3445, lng:126.8012, cap:'140MVA', avail:'~30MVA' },
-  { name:'반월 154kV 변전소',  lat:37.3521, lng:126.7823, cap:'120MVA', avail:'~20MVA' },
+let substations = [
+  { id:'s1', name:'신시화 345kV 변전소', lat:37.3298, lng:126.7234, mw:60, built:2023, status:'60MW 계약 완료', note:'수전처 (사용+예비 2회선)' },
+  { id:'s2', name:'안산 154kV 변전소',  lat:37.3445, lng:126.8012, mw:30, built:2010, status:'30MVA 가용', note:'' },
+  { id:'s3', name:'반월 154kV 변전소',  lat:37.3521, lng:126.7823, mw:20, built:2008, status:'20MVA 가용', note:'' },
+];
+let riskAreas = [
+  { id:'r1', name:'시화호 인접 침수 위험', type:'flood', lat:37.3050, lng:126.7500, level:'mid', radius:1.5, desc:'시화호 수위 상승 시 저지대 침수 가능성' },
+  { id:'r2', name:'안산천 범람 위험구역', type:'flood', lat:37.3350, lng:126.8300, level:'low', radius:0.8, desc:'집중호우 시 하천 범람 이력 (5년 1회)' },
+  { id:'r3', name:'반월공단 화학물질 위험', type:'fire', lat:37.3600, lng:126.7900, level:'mid', radius:1.0, desc:'인근 화학공장 밀집 지역' },
+  { id:'r4', name:'주거지역 민원 위험',   type:'civil', lat:37.3150, lng:126.8100, level:'low', radius:0.5, desc:'변전소 송전선로 인근 주거지역' },
 ];
 
-// ─────────────────────────────────────────────
-//  ★ 5개 타겟 고객사 프로필 (실제 요구사항 기반)
-// ─────────────────────────────────────────────
+// ★ 5개 타겟 고객사
 const CUSTS = [
   {
-    id: 'naver',
-    name: '네이버',
-    color: '#03c75a',
-    logo: '🟢',
-    min_mw: 10,
-    rack_density: '10~30kW/랙 (AI 확장 시 50kW+)',
-    tier: 'Tier III+',
-    cooling: '외기냉각 기반, 액침냉각 도입 추진 (각 세종 예정)',
-    pue: '1.1 이하 목표 (춘천 각 PUE 1.09 수준)',
-    network: 'IX 연결 필수, 자체 백본망 직결',
-    key_req: [
-      '수도권 서버 분산 수요 (춘천 각, 세종 각에 이은 수도권 거점)',
-      '고밀도 AI GPU 클러스터 수용 가능한 전력 밀도',
-      '자체 냉각 기술(NAMU) 혹은 액침냉각 적용 가능한 공간',
-      '산업단지 입지 선호 (민원 리스크 낮음)',
-      '재생에너지·RE100 연계 가능성',
-    ],
-    revenue: '200~350억/10MW',
-    fit_rationale: '반월국가산업단지 내 위치, 60MW 대용량, 높이·층수 제한 없어 고밀도 구성 가능',
+    id:'naver', name:'네이버', logo:'🟢', color:'#03c75a',
+    min_mw:10, rack_density:'10~50kW/랙 (AI 확장)', tier:'Tier III+',
+    cooling:'외기냉각·액침냉각 도입 추진', pue:'1.1 이하 목표',
+    network:'IX 직결·자체 백본망', revenue:'200~350억/10MW',
+    reqs:['수도권 서버 분산 거점 (춘천·세종에 이은 3번째)','고밀도 AI GPU 랙 수용 (50kW+)','액침냉각 적용 가능한 설계 유연성','산업단지 입지 (민원 리스크 최소)','RE100·탄소중립 로드맵 필요'],
   },
   {
-    id: 'aws',
-    name: 'AWS',
-    color: '#ff9900',
-    logo: '🟠',
-    min_mw: 20,
-    rack_density: '10~25kW/랙 (AI 구역 30~100kW)',
-    tier: 'Tier III / 자체 Tier III+ 기준',
-    cooling: '하이브리드 (공랭+수냉+AI구역 액냉)',
-    pue: '1.15 글로벌 평균, 1.2 이하 요구',
-    network: '전용 광케이블 다중화, Direct Connect PoP 연계',
-    key_req: [
-      '최소 20MW 이상 독립 전력 공급 (사용·예비 이중화)',
-      'N+1~2N 전력·냉각 이중화 (Tier III+ 수준)',
-      '복수 인터넷 교환국(IX) 접속 또는 전용 광케이블',
-      '장기 임대 (10~15년) + 확장 옵션 필수',
-      'SOC 2, ISO 27001 준수 및 물리 보안 4중 레이어',
-      '지속가능성: RE100·탄소중립 로드맵 공개',
-    ],
-    revenue: '300~500억/10MW',
-    fit_rationale: '60MW 대용량·사용예비 2회선·전기계약 완료로 AWS 최우선 요건 충족. 수도권 AZ 확장 전략 부합',
+    id:'aws', name:'AWS', logo:'🟠', color:'#ff9900',
+    min_mw:20, rack_density:'10~100kW/랙 (AI구역)', tier:'Tier III+',
+    cooling:'하이브리드 (공랭+수냉+AI액냉)', pue:'1.15~1.2',
+    network:'전용 광케이블 이중화·Direct Connect', revenue:'300~500억/10MW',
+    reqs:['20MW 이상·사용+예비 2회선 이중화 필수','Tier III+ 이상 N+1 전력·냉각','장기 임대 10~15년 + 확장 옵션','SOC2·ISO27001·물리 보안 4중 레이어','한국 리전 추가 AZ 확보 전략 (서울 리전)'],
   },
   {
-    id: 'ms',
-    name: 'Microsoft(Azure)',
-    color: '#0078d4',
-    logo: '🔵',
-    min_mw: 20,
-    rack_density: '15~40kW/랙 (AI/HPC 구역 100kW+)',
-    tier: 'Tier III+ / 자체 MCA 기준',
-    cooling: '액침냉각 적극 도입, 폐열 재활용 요구',
-    pue: '1.12 목표 (글로벌 평균 수준)',
-    network: 'ExpressRoute PoP 근접, 다중 ISP 접속',
-    key_req: [
-      '20MW 이상 블록 단위 공급, 장기 선계약',
-      '고밀도 AI 랙(100kW+) 수용 위한 설계 유연성',
-      '탄소중립·Water Positive 2030 목표 부합하는 운영 계획',
-      '건물 높이·층수 제한 없어야 함 (초고밀도 설계)',
-      '폐열 지역난방 등 열 재활용 가능 여부',
-    ],
-    revenue: '350~550억/10MW',
-    fit_rationale: '층수·높이 제한 없는 설계 자유도, 상수 140ton/h로 수냉 대규모 운영 가능, 산업단지 인접 RE100 추진 여건',
+    id:'ms', name:'Microsoft (Azure)', logo:'🔵', color:'#0078d4',
+    min_mw:20, rack_density:'15~100kW+ (AI/HPC)', tier:'Tier III+',
+    cooling:'액침냉각 적극 도입·폐열 재활용', pue:'1.12 목표',
+    network:'ExpressRoute PoP 근접·다중 ISP', revenue:'350~550억/10MW',
+    reqs:['20MW+ 블록 공급·장기 선계약','층수·높이 제한 없는 설계 자유도 (초고밀도)','탄소중립·Water Positive 2030 부합','AI/HPC 랙 100kW+ 수용 인프라','건물 구조 하중 강화 (고밀도 랙)'],
   },
   {
-    id: 'google',
-    name: 'Google(GCP)',
-    color: '#4285f4',
-    logo: '🔵',
-    min_mw: 20,
-    rack_density: '20~50kW/랙 (TPU 구역 100kW+)',
-    tier: 'Tier III (자체 기준 운영)',
-    cooling: '증발식·수냉식 혼합, Water Positive 목표',
-    pue: '1.10 목표 (글로벌 평균 업계 최저 수준)',
-    network: '서울 리전 IX 직결, 해저케이블 PoP 연계',
-    key_req: [
-      '대용량 냉각수 안정 공급 (Google Water Positive 2030)',
-      '재생에너지 100% 달성 계획 및 REC 조달 가능성',
-      '서울 리전 확장 대비 수도권 핵심 입지',
-      '고성능 네트워크 (저지연 IX 접속)',
-      '장기 계약(10년+), 확장 부지 확보 가능성',
-    ],
-    revenue: '300~500억/10MW',
-    fit_rationale: '냉각수 140ton/h 안정 공급, 345kV 고압 대용량 수전, 수도권 리전 확장 전략에 최적 위치',
+    id:'google', name:'Google (GCP)', logo:'🔵', color:'#4285f4',
+    min_mw:20, rack_density:'20~100kW+ (TPU 구역)', tier:'Tier III',
+    cooling:'증발식·수냉식 혼합·Water Positive', pue:'1.10 목표',
+    network:'서울 리전 IX 직결·해저케이블 PoP', revenue:'300~500억/10MW',
+    reqs:['대용량 냉각수 안정 공급 (Water Positive 2030)','재생에너지 100%·REC 조달 가능성','서울 리전 확장 대비 수도권 핵심 입지','저지연 IX 접속·고성능 네트워크','10년+ 장기 계약·확장 부지 확보'],
   },
   {
-    id: 'finance',
-    name: '금융사',
-    color: '#dc2626',
-    logo: '🔴',
-    min_mw: 5,
-    rack_density: '5~10kW/랙 (표준 밀도)',
-    tier: 'Tier IV (금융감독원 IT아웃소싱 가이드라인)',
-    cooling: '수냉식 또는 정밀공조 (이중화 필수)',
-    pue: '1.4~1.6 (효율보다 안정성 우선)',
-    network: '금감원 승인 망분리 구성, 전용 회선',
-    key_req: [
-      'Tier IV 수준 이중화 (2N 전력·냉각, 무중단 유지보수)',
-      '금융감독원 IT아웃소싱 규정 준수 (망분리, 물리 보안)',
-      '재해복구(DR) 거리 기준: 기존 IDC와 30km 이상 이격 권장',
-      '컴플라이언스: ISO 27001, ISMS 인증 필수',
-      '전용 cage 또는 suite 구획 (타 고객과 물리 분리)',
-    ],
-    revenue: '150~300억/10MW',
-    fit_rationale: '서울 도심 IDC(마포)와 약 40km 이격 → DR 거리 충족. 산업단지 위치로 물리 보안 우수. 안산 지역 제조업·핀테크 수요',
+    id:'finance', name:'금융사', logo:'🔴', color:'#dc2626',
+    min_mw:5, rack_density:'5~10kW/랙 (표준 밀도)', tier:'Tier IV 필수',
+    cooling:'수냉식·정밀공조 (2N 이중화)', pue:'1.4~1.6',
+    network:'망분리·금감원 승인 전용 회선', revenue:'150~300억/10MW',
+    reqs:['Tier IV 2N 전력·냉각 완전 이중화 (금감원 가이드)','기존 IDC와 30km+ 이격 (재해복구 DR 기준)','ISO 27001·ISMS 인증 필수','전용 cage/suite 물리 분리','5년+ 계약·24×7 유인 경비'],
   },
 ];
 
 const STEPS_CFG = [
-  { id:'doc',    n:'01', name:'문서 파싱 · 기본 정보 확인' },
+  { id:'doc',    n:'01', name:'문서 파싱 · 기본 정보' },
   { id:'prop',   n:'02', name:'물건 상세 분석' },
   { id:'conn',   n:'03', name:'자사 DC 연계 분석' },
-  { id:'region', n:'04', name:'안산 권역 비교 분석' },
-  { id:'cust',   n:'05', name:'고객사별 적합성 (네이버·AWS·MS·Google·금융사)' },
-  { id:'final',  n:'06', name:'D단계 착수 타당성 보고서' },
+  { id:'region', n:'04', name:'안산 권역 비교' },
+  { id:'cust',   n:'05', name:'고객사별 적합성' },
+  { id:'final',  n:'06', name:'D단계 타당성 보고서' },
 ];
 
-// ─────────────────────────────────────────────
-// API 키
-// ─────────────────────────────────────────────
+// ════════════════════════════════════════════
+//  API 키
+// ════════════════════════════════════════════
 let apiKey = '';
+
 function saveKey() {
-  const v = document.getElementById('api-key-input').value.trim();
+  const v = document.getElementById('api-input').value.trim();
   if (!v) { alert('API 키를 입력하세요.'); return; }
   apiKey = v;
   localStorage.setItem('anthKey', v);
-  updateKeyUI();
-}
-function updateKeyUI() {
-  const el = document.getElementById('api-status');
-  if (apiKey) { el.textContent = '✓ 설정됨'; el.className = 'api-ok'; }
-  else { el.textContent = '미설정'; el.className = 'api-no'; }
+  const el = document.getElementById('key-status');
+  el.textContent = '저장됨 — 연동 확인을 눌러주세요'; el.className = 'tb-key-no';
+  document.getElementById('test-btn').disabled = false;
 }
 
-// ─────────────────────────────────────────────
-// 지도
-// ─────────────────────────────────────────────
-const map = L.map('map').setView([37.3219, 126.8309], 12);
+function showToast(type, title, sub, duration=4000) {
+  // 기존 토스트 제거
+  document.querySelectorAll('.key-toast').forEach(t => t.remove());
+  const icons = { ok:'✅', err:'❌', loading:'⏳' };
+  const div = document.createElement('div');
+  div.className = 'key-toast ' + type;
+  div.innerHTML = `<div class="kt-icon">${icons[type]||'ℹ'}</div><div class="kt-body"><div class="kt-title">${title}</div>${sub?`<div class="kt-sub">${sub}</div>`:''}</div>`;
+  document.body.appendChild(div);
+  if (duration > 0) setTimeout(() => { if(div.parentNode) div.remove(); }, duration);
+  return div;
+}
+
+async function testConnection() {
+  if (!apiKey) { alert('먼저 API 키를 입력하고 저장해주세요.'); return; }
+  const btn = document.getElementById('test-btn');
+  const status = document.getElementById('key-status');
+  btn.disabled = true; btn.textContent = '확인 중...';
+  status.textContent = '연동 확인 중...'; status.className = 'tb-key-testing';
+  const toast = showToast('loading', 'API 연결 테스트 중...', 'Anthropic 서버에 연결하고 있습니다...', 0);
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01'
+      },
+      body: JSON.stringify({
+        model: 'claude-haiku-4-5',
+        max_tokens: 10,
+        messages: [{ role: 'user', content: 'Hi' }]
+      })
+    });
+    const data = await res.json();
+    toast.remove();
+
+    if (res.ok && data.content) {
+      // 성공
+      status.textContent = '✓ 연동 성공'; status.className = 'tb-key-ok';
+      btn.textContent = '✓ 확인됨'; btn.disabled = false;
+      showToast('ok', 'API 연동 성공!', '분석 시작 버튼을 눌러 에이전트를 실행하세요.');
+    } else if (data.error) {
+      const errType = data.error.type || '';
+      const errMsg = data.error.message || '';
+      status.textContent = '✗ 연결 실패'; status.className = 'tb-key-err';
+      btn.textContent = '재확인'; btn.disabled = false;
+      if (errType === 'authentication_error' || res.status === 401) {
+        showToast('err', 'API 키 인증 실패', '키가 올바른지 확인하세요. sk-ant-api03- 으로 시작해야 합니다.');
+      } else if (errMsg.toLowerCase().includes('credit') || errMsg.toLowerCase().includes('balance') || res.status === 402) {
+        showToast('err', '크레딧 부족', 'console.anthropic.com → Billing → Add credit에서 충전하세요. (최소 $5)');
+      } else if (res.status === 429) {
+        showToast('err', '요청 한도 초과', '잠시 후 다시 시도해주세요.');
+      } else {
+        showToast('err', `오류: ${errType}`, errMsg.slice(0, 80));
+      }
+    }
+  } catch(e) {
+    toast.remove();
+    status.textContent = '✗ 네트워크 오류'; status.className = 'tb-key-err';
+    btn.textContent = '재확인'; btn.disabled = false;
+    if (e.message.includes('Failed to fetch') || e.message.includes('NetworkError')) {
+      showToast('err', '네트워크 연결 실패', 'CORS 오류일 수 있습니다. 로컬 파일(file://) 실행 시 GitHub Pages를 사용하세요.');
+    } else {
+      showToast('err', '연결 오류', e.message.slice(0, 80));
+    }
+  }
+}
+
+// ════════════════════════════════════════════
+//  지도 초기화
+// ════════════════════════════════════════════
+const leafMap = L.map('map').setView([37.3219, 126.8309], 12);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
   attribution: '© OpenStreetMap contributors', maxZoom: 19
-}).addTo(map);
+}).addTo(leafMap);
 
-const mkIcon = (c, sz = 13) => L.divIcon({
-  className: '',
-  html: `<div style="width:${sz}px;height:${sz}px;border-radius:50%;background:${c};border:2.5px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.3);"></div>`,
-  iconSize: [sz,sz], iconAnchor: [sz/2,sz/2]
+const mkCircle = (c, sz=13) => L.divIcon({
+  className:'', html:`<div style="width:${sz}px;height:${sz}px;border-radius:50%;background:${c};border:2.5px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.3);"></div>`,
+  iconSize:[sz,sz], iconAnchor:[sz/2,sz/2]
 });
-const mkSq = c => L.divIcon({
-  className: '',
-  html: `<div style="width:12px;height:12px;background:${c};border:2px solid #fff;border-radius:2px;box-shadow:0 1px 4px rgba(0,0,0,.25);"></div>`,
-  iconSize: [12,12], iconAnchor: [6,6]
+const mkSquare = c => L.divIcon({
+  className:'', html:`<div style="width:12px;height:12px;background:${c};border:2px solid #fff;border-radius:2px;box-shadow:0 1px 4px rgba(0,0,0,.25);"></div>`,
+  iconSize:[12,12], iconAnchor:[6,6]
 });
-const popHtml = (name, rows, note) =>
+const mkTriangle = c => L.divIcon({
+  className:'', html:`<div style="width:0;height:0;border-left:7px solid transparent;border-right:7px solid transparent;border-bottom:13px solid ${c};filter:drop-shadow(0 1px 2px rgba(0,0,0,.3));"></div>`,
+  iconSize:[14,13], iconAnchor:[7,13]
+});
+const mkPopup = (name, rows, note='') =>
   `<b style="font-size:13px;">${name}</b><hr style="margin:5px 0;border:none;border-top:1px solid #eee;">` +
-  rows.map(([k,v]) => `<div style="display:flex;justify-content:space-between;gap:8px;font-size:11.5px;padding:2px 0;"><span style="color:#64748b;">${k}</span><b>${v}</b></div>`).join('') +
-  (note ? `<div style="font-size:11px;color:#64748b;margin-top:5px;">${note}</div>` : '');
+  rows.map(([k,v])=>`<div style="display:flex;justify-content:space-between;gap:8px;font-size:11.5px;padding:2px 0;"><span style="color:#64748b;">${k}</span><b>${v}</b></div>`).join('') +
+  (note?`<div style="font-size:11px;color:#64748b;margin-top:5px;">${note}</div>`:'');
 
-OWN.forEach(d => L.marker([d.lat,d.lng],{icon:mkIcon('#0891b2',15)}).addTo(map)
-  .bindPopup(popHtml(d.name,[['IT Load',d.mw+'MW'],['랙',d.racks.toLocaleString()+'개'],['준공',d.built+'년']],d.note)));
-COMP.forEach(d => L.marker([d.lat,d.lng],{icon:mkIcon(d.color,13)}).addTo(map)
-  .bindPopup(popHtml(d.name+' ['+d.tag+']',[['IT Load',d.mw+'MW'],['가동률',d.occ]],d.note)));
-SUBS.forEach(s => L.marker([s.lat,s.lng],{icon:mkSq('#d97706')}).addTo(map)
-  .bindPopup(popHtml(s.name,[['용량',s.cap],['가용',s.avail]],'')));
+// 마커 레이어 그룹
+const ownLayer   = L.layerGroup().addTo(leafMap);
+const compLayer  = L.layerGroup().addTo(leafMap);
+const subLayer   = L.layerGroup().addTo(leafMap);
+const riskLayer  = L.layerGroup().addTo(leafMap);
+const distLayer  = L.layerGroup().addTo(leafMap);
+let   tgtMarker  = null;
+let   picking    = false;
 
-let tgtMarker=null, distLines=[], picking=false;
-function setTarget(lat, lng, name) {
-  if (tgtMarker) map.removeLayer(tgtMarker);
-  distLines.forEach(l => map.removeLayer(l)); distLines = [];
-  tgtMarker = L.marker([lat,lng], {
-    icon: L.divIcon({className:'',html:'<div style="width:22px;height:22px;border-radius:50%;background:#2563eb;border:4px solid #fff;box-shadow:0 3px 12px rgba(37,99,235,.55);"></div>',iconSize:[22,22],iconAnchor:[11,11]})
-  }).addTo(map).bindPopup(`<b>${name||'대상 물건'}</b>`);
-  OWN.forEach(d => distLines.push(
-    L.polyline([[lat,lng],[d.lat,d.lng]], {color:'#0891b2',opacity:.2,weight:1.5,dashArray:'5,5'}).addTo(map)
-  ));
-  map.setView([lat,lng], 12);
-  document.getElementById('map-info-val').textContent = name||'(미입력)';
+function renderMapMarkers() {
+  ownLayer.clearLayers(); compLayer.clearLayers(); subLayer.clearLayers();
+  ownDCs.forEach(d => L.marker([d.lat,d.lng],{icon:mkCircle('#0891b2',15)}).bindPopup(mkPopup(d.name,[['용량',d.mw+'MW'],['준공',d.built+'년'],['상태',d.status]],d.note)).addTo(ownLayer));
+  compDCs.forEach(d => L.marker([d.lat,d.lng],{icon:mkCircle(d.tag==='예정'?'#7c3aed':'#dc2626',13)}).bindPopup(mkPopup(d.name+' ['+(d.tag||'운영')+']',[['용량',d.mw+'MW'],['상태',d.status]],d.note)).addTo(compLayer));
+  substations.forEach(s => L.marker([s.lat,s.lng],{icon:mkSquare('#d97706')}).bindPopup(mkPopup(s.name,[['용량',s.mw+'MW'],['상태',s.status]],s.note)).addTo(subLayer));
+  renderRiskMarkers();
 }
-map.on('click', e => {
+
+function renderRiskMarkers() {
+  riskLayer.clearLayers();
+  const colMap = {flood:'#3b82f6',quake:'#dc2626',fire:'#f97316',civil:'#7c3aed',power:'#d97706',other:'#64748b'};
+  riskAreas.forEach(r => {
+    const c = colMap[r.type]||'#dc2626';
+    // 원형 표시
+    L.circle([r.lat,r.lng], { radius:r.radius*1000, color:c, weight:1.5, fillColor:c, fillOpacity:.12, dashArray:'5,5' }).bindPopup(mkPopup(r.name,[['유형',r.type],['위험수준',r.level==='high'?'높음':r.level==='mid'?'보통':'낮음']],r.desc)).addTo(riskLayer);
+    // 삼각형 마커
+    L.marker([r.lat,r.lng],{icon:mkTriangle(c)}).bindPopup(mkPopup(r.name,[['유형',r.type],['위험수준',r.level==='high'?'높음':r.level==='mid'?'보통':'낮음']],r.desc)).addTo(riskLayer);
+  });
+}
+
+function setTargetMarker(lat, lng, name) {
+  if (tgtMarker) leafMap.removeLayer(tgtMarker);
+  distLayer.clearLayers();
+  tgtMarker = L.marker([lat,lng], {
+    icon: L.divIcon({ className:'', html:'<div style="width:22px;height:22px;border-radius:50%;background:#2563eb;border:4px solid #fff;box-shadow:0 3px 12px rgba(37,99,235,.55);"></div>', iconSize:[22,22], iconAnchor:[11,11] })
+  }).addTo(leafMap).bindPopup(`<b>${name||'대상 물건'}</b>`);
+  ownDCs.forEach(d => L.polyline([[lat,lng],[d.lat,d.lng]], {color:'#0891b2',opacity:.2,weight:1.5,dashArray:'5,5'}).addTo(distLayer));
+  leafMap.setView([lat,lng], 12);
+  document.getElementById('map-prop-name').textContent = name||'(미입력)';
+}
+
+leafMap.on('click', e => {
   if (!picking) return;
   document.getElementById('f-lat').value = e.latlng.lat.toFixed(5);
   document.getElementById('f-lng').value = e.latlng.lng.toFixed(5);
-  cancelPick(); setTarget(e.latlng.lat, e.latlng.lng, document.getElementById('f-name').value);
+  cancelPick();
+  setTargetMarker(e.latlng.lat, e.latlng.lng, document.getElementById('f-name').value);
 });
-function startPick() { picking=true; switchTab('map',document.querySelector('.tab')); document.getElementById('pick-hint').style.display='block'; document.getElementById('map').style.cursor='crosshair'; }
+function startPick() { picking=true; switchTab('map',null); document.getElementById('pick-hint').style.display='block'; document.getElementById('map').style.cursor='crosshair'; }
 function cancelPick() { picking=false; document.getElementById('pick-hint').style.display='none'; document.getElementById('map').style.cursor=''; }
 
-// ─────────────────────────────────────────────
-// PDF 파싱
-// ─────────────────────────────────────────────
-let pdfB64 = null;
-function handleDrop(e) { e.preventDefault(); document.getElementById('upload-area').classList.remove('drag'); const f=e.dataTransfer.files[0]; if(f) handleFile(f); }
-function handleFile(file) {
-  if (!file||!file.name.endsWith('.pdf')) { alert('PDF만 가능합니다.'); return; }
-  const r = new FileReader();
-  r.onload = () => { pdfB64=r.result.split(',')[1]; document.getElementById('upload-area').classList.add('has-file'); document.getElementById('ua-icon').textContent='✅'; document.getElementById('ua-title').textContent=file.name; document.getElementById('btn-parse').disabled=false; };
-  r.readAsDataURL(file);
-}
-async function parsePDF() {
-  if (!pdfB64) return;
-  if (!apiKey) { alert('API 키를 먼저 저장해주세요.'); return; }
-  const btn=document.getElementById('btn-parse'); btn.disabled=true;
-  document.getElementById('pi').innerHTML='<span class="spin"></span>';
-  document.getElementById('pl').textContent='AI 분석 중...';
-  const pm=document.getElementById('pmsg'); pm.className='pmsg loading'; pm.classList.remove('hidden');
-  document.getElementById('pm-icon').textContent='⏳'; document.getElementById('pm-text').textContent='PDF 파싱 중...';
-  try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
-      method:'POST', headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01'},
-      body: JSON.stringify({ model:'claude-sonnet-4-20250514', max_tokens:1000, system:'DC IM 파싱. JSON만.',
-        messages:[{role:'user',content:[{type:'document',source:{type:'base64',media_type:'application/pdf',data:pdfB64}},{type:'text',text:'JSON만: {"name":"","addr":"","investor":"","area":0,"power":0,"price":0,"itload":0,"racks":0,"pue":0,"sub_dist":0,"zone":"","cooling":"","lat":0,"lng":0,"summary":"3-5문장"}'}]}]})
-    });
-    const d=await res.json(); if(d.error) throw new Error(d.error.message);
-    const p=JSON.parse((d.content?.[0]?.text||'{}').replace(/```json|```/g,'').trim());
-    const set=(id,v)=>{if(v!=null){const el=document.getElementById(id);if(el){el.value=v;el.classList.add('hi');}}};
-    set('f-name',p.name);set('f-addr',p.addr);set('f-investor',p.investor);set('f-area',p.area);set('f-power',p.power);set('f-price',p.price);set('f-itload',p.itload);set('f-pue',p.pue);set('f-sub',p.sub_dist);if(p.racks)set('f-racks',p.racks);if(p.summary)set('f-im',p.summary);if(p.lat&&p.lng){set('f-lat',p.lat);set('f-lng',p.lng);setTarget(p.lat,p.lng,p.name);}
-    pm.className='pmsg done'; document.getElementById('pm-icon').textContent='✅'; document.getElementById('pm-text').textContent='파싱 완료!';
-    document.getElementById('pi').textContent='✓'; document.getElementById('pl').textContent='파싱 완료';
-  } catch(e) { pm.className='pmsg error'; document.getElementById('pm-icon').textContent='❌'; document.getElementById('pm-text').textContent='오류: '+e.message; btn.disabled=false; document.getElementById('pi').textContent='✦'; document.getElementById('pl').textContent='AI로 정보 자동 추출'; }
-}
-
-// ─────────────────────────────────────────────
-// 탭 전환
-// ─────────────────────────────────────────────
+// ════════════════════════════════════════════
+//  탭 전환
+// ════════════════════════════════════════════
 function switchTab(id, btn) {
   document.querySelectorAll('.tab').forEach(b=>b.classList.remove('on'));
   document.querySelectorAll('.panel').forEach(p=>p.classList.remove('on'));
   document.getElementById('panel-'+id).classList.add('on');
-  if(btn) btn.classList.add('on'); else { const m={map:0,analysis:1,report:2}; document.querySelectorAll('.tab')[m[id]]?.classList.add('on'); }
-  if(id==='map') setTimeout(()=>map.invalidateSize(),50);
+  if (btn) btn.classList.add('on');
+  else { const tabMap={map:0,property:1,dc:2,customer:3,risk:4,analysis:5,report:6}; document.querySelectorAll('.tab')[tabMap[id]]?.classList.add('on'); }
+  if (id==='map') setTimeout(()=>leafMap.invalidateSize(),50);
 }
 
-// ─────────────────────────────────────────────
-// AI 분석
-// ─────────────────────────────────────────────
-let stepData = {};
+// 프로세스 패널 클릭
+const PROC_TAB_MAP = {1:'property',2:'dc',3:'customer',4:'risk',5:'analysis',6:'report'};
+function goProc(n) {
+  document.querySelectorAll('.proc-item').forEach(el=>el.classList.remove('active'));
+  document.getElementById('proc-'+n).classList.add('active');
+  switchTab(PROC_TAB_MAP[n], null);
+}
 
-// ★ 시스템 프롬프트에 5개 고객사 요구사항 상세 반영
+// ════════════════════════════════════════════
+//  DC 현황 탭 렌더링
+// ════════════════════════════════════════════
+function renderDCLists() {
+  renderDCList('own-dc-list', ownDCs, '#0891b2');
+  renderDCList('comp-dc-list', compDCs, null);
+  renderSubList();
+}
+function renderDCList(elId, data, fixColor) {
+  const el = document.getElementById(elId);
+  if (!data.length) { el.innerHTML = '<div style="padding:14px;text-align:center;color:var(--slate2);font-size:12px;">데이터 없음</div>'; return; }
+  el.innerHTML = data.map(d => {
+    const c = fixColor || (d.tag==='예정'?'#7c3aed':'#dc2626');
+    return `<div class="dc-item">
+      <div class="dc-dot" style="background:${c};"></div>
+      <div class="dc-info">
+        <div class="dc-name">${d.name}</div>
+        <div class="dc-meta">${d.mw}MW · ${d.status} · ${d.note||''}</div>
+      </div>
+      <div class="dc-actions">
+        <button class="icon-btn del" onclick="deleteDC('${d.id}','${elId.includes('own')?'own':'comp'}')">✕</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+function renderSubList() {
+  const el = document.getElementById('sub-list');
+  el.innerHTML = substations.map(s => `
+    <div class="dc-item">
+      <div class="dc-dot" style="background:#d97706;border-radius:2px;"></div>
+      <div class="dc-info">
+        <div class="dc-name">${s.name}</div>
+        <div class="dc-meta">${s.mw}MW · ${s.status}</div>
+      </div>
+      <div class="dc-actions">
+        <button class="icon-btn del" onclick="deleteDC('${s.id}','sub')">✕</button>
+      </div>
+    </div>`).join('');
+}
+function deleteDC(id, type) {
+  if (type==='own') ownDCs = ownDCs.filter(d=>d.id!==id);
+  else if (type==='comp') compDCs = compDCs.filter(d=>d.id!==id);
+  else substations = substations.filter(s=>s.id!==id);
+  renderDCLists(); renderMapMarkers();
+}
+
+let dcModalType = '';
+function openDCModal(type) { dcModalType=type; document.getElementById('dc-modal-title').textContent=type==='own'?'자사 IDC 추가':type==='comp'?'경쟁사 DC 추가':'변전소 추가'; ['dm-name','dm-mw','dm-lat','dm-lng','dm-built','dm-status','dm-note'].forEach(id=>document.getElementById(id).value=''); document.getElementById('dc-modal').classList.remove('hidden'); }
+function closeDCModal() { document.getElementById('dc-modal').classList.add('hidden'); }
+function saveDCItem() {
+  const d = { id:'d'+Date.now(), name:document.getElementById('dm-name').value, mw:parseFloat(document.getElementById('dm-mw').value)||0, lat:parseFloat(document.getElementById('dm-lat').value)||0, lng:parseFloat(document.getElementById('dm-lng').value)||0, built:parseInt(document.getElementById('dm-built').value)||2024, status:document.getElementById('dm-status').value||'운영중', note:document.getElementById('dm-note').value };
+  if (!d.name||!d.lat||!d.lng) { alert('이름과 좌표는 필수입니다.'); return; }
+  if (dcModalType==='own') ownDCs.push(d);
+  else if (dcModalType==='comp') { d.tag='운영'; compDCs.push(d); }
+  else substations.push(d);
+  closeDCModal(); renderDCLists(); renderMapMarkers();
+}
+
+// ════════════════════════════════════════════
+//  고객사 탭 렌더링
+// ════════════════════════════════════════════
+function renderCustomers() {
+  document.getElementById('cust-cards-container').innerHTML = CUSTS.map(c => `
+    <div class="cust-card">
+      <div class="cc-head" style="background:${c.color}18;">
+        <div class="cc-logo">${c.logo}</div>
+        <div>
+          <div class="cc-name" style="color:${c.color};">${c.name}</div>
+          <div style="font-size:10.5px;color:var(--slate);">${c.revenue}</div>
+        </div>
+      </div>
+      <div class="cc-body">
+        <div class="cc-row"><span class="cc-key">최소 전력</span><span class="cc-val">${c.min_mw}MW+</span></div>
+        <div class="cc-row"><span class="cc-key">랙 밀도</span><span class="cc-val" style="font-size:11px;">${c.rack_density}</span></div>
+        <div class="cc-row"><span class="cc-key">Tier</span><span class="cc-val">${c.tier}</span></div>
+        <div class="cc-row"><span class="cc-key">냉각</span><span class="cc-val" style="font-size:11px;">${c.cooling}</span></div>
+        <div class="cc-row"><span class="cc-key">목표 PUE</span><span class="cc-val">${c.pue}</span></div>
+        <div class="cc-row"><span class="cc-key">네트워크</span><span class="cc-val" style="font-size:11px;">${c.network}</span></div>
+        <div class="cc-reqs">
+          <div class="cc-req-title">핵심 요구사항</div>
+          ${c.reqs.map(r=>`<div class="cc-req-item">${r}</div>`).join('')}
+        </div>
+      </div>
+    </div>`).join('');
+}
+
+// ════════════════════════════════════════════
+//  위험지역 탭 렌더링
+// ════════════════════════════════════════════
+const RISK_ICONS = {flood:'🌊',quake:'🔴',fire:'🔥',civil:'📢',power:'⚡',other:'⚠'};
+const RISK_LABELS = {flood:'침수 위험',quake:'지진 취약',fire:'화재 위험',civil:'민원 위험',power:'전력 불안정',other:'기타'};
+const RISK_COLORS = {flood:'#3b82f6',quake:'#dc2626',fire:'#f97316',civil:'#7c3aed',power:'#d97706',other:'#64748b'};
+
+function renderRisks() {
+  const grouped = {};
+  riskAreas.forEach(r => { if(!grouped[r.type]) grouped[r.type]=[]; grouped[r.type].push(r); });
+  document.getElementById('risk-grid').innerHTML = Object.entries(grouped).map(([type,items])=>`
+    <div class="risk-card">
+      <div class="risk-head" style="background:${RISK_COLORS[type]}12;border-bottom:1px solid ${RISK_COLORS[type]}30;">
+        <div class="risk-title"><span>${RISK_ICONS[type]}</span>${RISK_LABELS[type]||type}</div>
+        <span class="risk-lv rl-${items[0].level}">${items.length}건</span>
+      </div>
+      <div class="risk-list">${items.map(r=>`
+        <div class="risk-item">
+          <div class="risk-icon">${RISK_ICONS[r.type]}</div>
+          <div class="risk-info">
+            <div class="risk-name">${r.name}</div>
+            <div class="risk-meta">${r.desc} · 반경 ${r.radius}km</div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end;">
+            <span class="risk-lv rl-${r.level}">${r.level==='high'?'높음':r.level==='mid'?'보통':'낮음'}</span>
+            <button class="icon-btn del" onclick="deleteRisk('${r.id}')">✕</button>
+          </div>
+        </div>`).join('')}
+      </div>
+    </div>`).join('');
+}
+function deleteRisk(id) { riskAreas=riskAreas.filter(r=>r.id!==id); renderRisks(); renderRiskMarkers(); }
+function openRiskModal() { ['rm-name','rm-lat','rm-lng','rm-desc'].forEach(id=>document.getElementById(id).value=''); document.getElementById('rm-radius').value='0.5'; document.getElementById('risk-modal').classList.remove('hidden'); }
+function closeRiskModal() { document.getElementById('risk-modal').classList.add('hidden'); }
+function saveRiskItem() {
+  const r = { id:'r'+Date.now(), name:document.getElementById('rm-name').value, type:document.getElementById('rm-type').value, lat:parseFloat(document.getElementById('rm-lat').value)||0, lng:parseFloat(document.getElementById('rm-lng').value)||0, level:document.getElementById('rm-level').value, radius:parseFloat(document.getElementById('rm-radius').value)||0.5, desc:document.getElementById('rm-desc').value };
+  if (!r.name||!r.lat||!r.lng) { alert('이름과 좌표는 필수입니다.'); return; }
+  riskAreas.push(r); closeRiskModal(); renderRisks(); renderRiskMarkers();
+}
+
+// ════════════════════════════════════════════
+//  PDF 파싱
+// ════════════════════════════════════════════
+let pdfB64 = null;
+function handleDrop(e) { e.preventDefault(); document.getElementById('upload-box').classList.remove('drag'); const f=e.dataTransfer.files[0]; if(f) handleFile(f); }
+function handleFile(file) {
+  if (!file?.name.endsWith('.pdf')) { alert('PDF 파일만 가능합니다.'); return; }
+  const r=new FileReader(); r.onload=()=>{ pdfB64=r.result.split(',')[1]; document.getElementById('upload-box').classList.add('done'); document.getElementById('ub-icon').textContent='✅'; document.getElementById('ub-title').textContent=file.name; document.getElementById('ub-sub').textContent=(file.size/1024).toFixed(0)+'KB'; document.getElementById('btn-parse').disabled=false; }; r.readAsDataURL(file);
+}
+async function parsePDF() {
+  if (!pdfB64) return;
+  if (!apiKey) { alert('API 키를 먼저 입력하고 저장해주세요.'); return; }
+  const btn=document.getElementById('btn-parse'); btn.disabled=true;
+  document.getElementById('pi').innerHTML='<span class="spin"></span>'; document.getElementById('pl').textContent='AI 분석 중...';
+  const pm=document.getElementById('pmsg'); pm.className='pmsg loading'; pm.classList.remove('hidden');
+  document.getElementById('pm-i').textContent='⏳'; document.getElementById('pm-t').textContent='PDF 파싱 중...';
+  try {
+    const res=await callAnthropicRaw('DC IM 파싱. JSON만.',
+      [{type:'document',source:{type:'base64',media_type:'application/pdf',data:pdfB64}},{type:'text',text:'JSON만: {"name":"","addr":"","investor":"","area":0,"power":0,"price":0,"itload":0,"racks":0,"pue":0,"sub_dist":0,"zone":"","cooling":"","lat":0,"lng":0,"summary":"3-5문장"}'}], 800);
+    const p=JSON.parse(res.replace(/```json|```/g,'').trim());
+    const set=(id,v)=>{if(v!=null){const el=document.getElementById(id);if(el){el.value=v;el.classList.add('hi');}}};
+    set('f-name',p.name);set('f-addr',p.addr);set('f-investor',p.investor);set('f-area',p.area);set('f-power',p.power);set('f-price',p.price);set('f-itload',p.itload);set('f-pue',p.pue);set('f-sub',p.sub_dist);if(p.racks)set('f-racks',p.racks);if(p.summary)set('f-im',p.summary);if(p.lat&&p.lng){set('f-lat',p.lat);set('f-lng',p.lng);setTargetMarker(p.lat,p.lng,p.name);}
+    pm.className='pmsg done'; document.getElementById('pm-i').textContent='✅'; document.getElementById('pm-t').textContent='파싱 완료! 정보를 확인하세요.';
+    document.getElementById('pi').textContent='✓'; document.getElementById('pl').textContent='파싱 완료';
+    setProcStatus(1,'done','✓ 등록 완료');
+  } catch(e) { pm.className='pmsg error'; document.getElementById('pm-i').textContent='❌'; document.getElementById('pm-t').textContent='오류: '+e.message; btn.disabled=false; document.getElementById('pi').textContent='✦'; document.getElementById('pl').textContent='AI로 정보 자동 추출'; }
+}
+
+// ════════════════════════════════════════════
+//  AI 공통 호출
+// ════════════════════════════════════════════
+async function callAnthropicRaw(system, contentArr, maxTokens=2000) {
+  const res=await fetch('https://api.anthropic.com/v1/messages',{
+    method:'POST', headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01'},
+    body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:maxTokens,system,messages:[{role:'user',content:contentArr}]})
+  });
+  const d=await res.json(); if(d.error) throw new Error(d.error.message);
+  return d.content?.[0]?.text||'{}';
+}
+async function callAI(prompt, maxTokens=2000) {
+  return JSON.parse((await callAnthropicRaw(SYS, [{type:'text',text:prompt}], maxTokens)).replace(/```json|```/g,'').trim());
+}
+
 const SYS = `당신은 데이터센터 DBO 사업 전문 AI 분석 에이전트입니다.
+안산 권역: 총 공급 88MW, 가동률 84%, 연 18-22% 성장. 임대 단가 6-8만원/kW/월.
+전력: 154kV=20MW+필수, 변전소 1km미만=우수.
 
-[안산 권역 시장 현황]
-총 운영 공급: 88MW, 평균 가동률: 84%, 연 18-22% 성장, 수도권 DC 임대 단가: 6-8만원/kW/월
-전력: 154kV=20MW+필수, 변전소 1km미만=우수. NHN 50MW 예정(2026)
-
-[타겟 고객사 실제 요구사항 - 반드시 이 기준으로 분석]
-
-● 네이버 (클라우드·AI)
-- 최소 10MW, 수도권 거점 (춘천·세종에 이은 수도권 서버 분산)
-- 고밀도 AI GPU 수용: 랙당 10~50kW, 향후 액침냉각 도입 필요
-- 자체 외기냉각 기술(NAMU) 또는 액침냉각 적용 가능 공간 필요
-- PUE 1.1 이하 목표, RE100 추진, 산업단지 입지 선호
-- 매출 추정: 200~350억/10MW
-
-● AWS (Amazon Web Services)
-- 최소 20MW, 사용+예비 이중화 전력 필수, Tier III+ 이상
-- 랙당 10~25kW (일반), AI구역 30~100kW, 하이브리드 냉각
-- 장기임대 10~15년, SOC2·ISO27001, 물리 보안 4중 레이어
-- PUE 1.15~1.2, RE100 목표, 글로벌 PUE 1.15 달성
-- 한국 리전 AZ 확장 전략 (서울 리전 추가 AZ 필요)
-- 매출 추정: 300~500억/10MW
-
-● Microsoft Azure
-- 최소 20MW, AI/HPC 구역 랙당 100kW+ 수용 필수
-- 층수·높이 제한 없는 설계 자유도 (초고밀도 구성)
-- 액침냉각 적극 도입, 폐열 재활용 요구, PUE 1.12 목표
-- 탄소중립·Water Positive 2030 목표 부합 필요
-- 장기계약, ExpressRoute PoP 근접 필수
-- 매출 추정: 350~550억/10MW
-
-● Google Cloud (GCP)
-- 최소 20MW, 대용량 냉각수 안정 공급 필수 (Water Positive)
-- TPU/AI 구역 랙당 100kW+, PUE 1.10 목표 (업계 최저)
-- 재생에너지 100% 및 REC 조달 가능성
-- 서울 리전 확장 대비 수도권 핵심 입지
-- 저지연 IX 접속, 해저케이블 PoP 연계
-- 매출 추정: 300~500억/10MW
-
-● 금융사 (은행·증권·보험)
-- 최소 5MW, Tier IV 필수 (금감원 IT아웃소싱 가이드라인)
-- 2N 전력·냉각 이중화, 전용 cage/suite 물리 분리
-- 기존 IDC와 30km+ 이격 (재해복구 DR 거리 기준)
-- ISO 27001, ISMS 인증, 망분리, 전용 회선
-- PUE 1.4~1.6 (효율보다 안정성), 랙당 5~10kW
-- 매출 추정: 150~300억/10MW
+[타겟 고객사 요구사항]
+● 네이버: 최소 10MW, AI GPU 50kW+/랙, PUE 1.1이하, 액침냉각 가능, RE100, 수도권 분산 거점
+● AWS: 최소 20MW, 사용+예비 이중화, Tier III+, 10~15년 장기계약, SOC2·ISO27001, 한국 리전 AZ
+● Microsoft Azure: 최소 20MW, 100kW+/랙, 층수·높이 제한 없는 설계, 액침냉각, 탄소중립 2030
+● Google Cloud: 최소 20MW, 대용량 냉각수, Water Positive, PUE 1.10, RE100, 서울 리전 확장
+● 금융사: 최소 5MW, Tier IV 필수, 2N 이중화, DR 30km+ 이격, ISMS·ISO27001, 전용 물리 분리
 
 JSON 형식으로만 응답하세요.`;
 
 function getInfo() {
-  const g = id => document.getElementById(id)?.value||'';
+  const g=id=>document.getElementById(id)?.value||'';
   return `물건:${g('f-name')}|소재:${g('f-addr')}|매각사:${g('f-investor')}|부지:${g('f-area')}평|수전:${g('f-power')}MW|토지가:${g('f-price')}억|IT:${g('f-itload')}MW|랙:${g('f-racks')}개|PUE:${g('f-pue')}|Tier:${g('f-tier')}|수전방식:${g('f-voltage')}|용도:${g('f-zone')}|지반:${g('f-soil')}|냉각:${g('f-cooling')}|냉각수:${g('f-water')}|변전소:${g('f-sub')}km|IC:${g('f-ic')}km|좌표:${g('f-lat')},${g('f-lng')}|IM:${g('f-im')}`;
 }
 
-async function callAI(prompt) {
-  if (!apiKey) throw new Error('API 키가 없습니다. 상단에 입력 후 저장하세요.');
-  const r = await fetch('https://api.anthropic.com/v1/messages', {
-    method:'POST', headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01'},
-    body: JSON.stringify({ model:'claude-sonnet-4-20250514', max_tokens:2000, system:SYS, messages:[{role:'user',content:prompt}] })
-  });
-  const d = await r.json();
-  if (d.error) throw new Error(d.error.message);
-  return JSON.parse((d.content?.[0]?.text||'{}').replace(/```json|```/g,'').trim());
-}
-
+// ════════════════════════════════════════════
+//  AI 분석 실행
+// ════════════════════════════════════════════
+let stepData = {};
 async function runAnalysis() {
-  if (!apiKey) { alert('먼저 상단에 Anthropic API 키를 입력하고 [저장]을 눌러주세요.\n\n발급: console.anthropic.com → API Keys'); return; }
-  const btn = document.getElementById('run-btn');
-  btn.disabled=true; btn.innerHTML='<div class="spin"></div> 분석 중...';
-  switchTab('analysis', document.querySelectorAll('.tab')[1]);
+  if (!apiKey) { alert('상단에 Anthropic API 키를 입력하고 [저장]을 눌러주세요.\n발급: console.anthropic.com → API Keys'); return; }
+  const btn=document.getElementById('run-btn'); btn.disabled=true; btn.innerHTML='<div class="spin"></div> 분석 중...';
+  switchTab('analysis', null);
   document.getElementById('empty-msg').classList.add('hidden');
   document.getElementById('analysis-content').classList.remove('hidden');
   document.getElementById('result-area').classList.add('hidden');
-  for(let i=1;i<=6;i++) setDot(i,'');
-  stepData = {};
+  stepData={};
 
-  const info = getInfo();
-  const name = document.getElementById('f-name').value||'대상 물건';
-  const la = parseFloat(document.getElementById('f-lat').value)||37.3192;
-  const ln = parseFloat(document.getElementById('f-lng').value)||126.8012;
+  const info=getInfo();
+  const name=document.getElementById('f-name').value||'대상 물건';
+  const la=parseFloat(document.getElementById('f-lat').value)||37.3192;
+  const ln=parseFloat(document.getElementById('f-lng').value)||126.8012;
 
-  setAg('RUNNING', `"${name}" 분석 시작`, 'run');
-  buildCards();
-  setTarget(la, ln, name);
+  setAg('RUNNING',`"${name}" 분석 시작`,'run');
+  buildStepCards();
+  setTargetMarker(la,ln,name);
 
-  const ownD = OWN.map(d=>({...d, dist:hvs(la,ln,d.lat,d.lng)}));
-  const subD = SUBS.map(s=>({...s, dist:hvs(la,ln,s.lat,s.lng)})).sort((a,b)=>a.dist-b.dist);
-  const compD = COMP.map(d=>({...d, dist:hvs(la,ln,d.lat,d.lng)}));
+  const ownD=ownDCs.map(d=>({...d,dist:hvs(la,ln,d.lat,d.lng)}));
+  const subD=substations.map(s=>({...s,dist:hvs(la,ln,s.lat,s.lng)})).sort((a,b)=>a.dist-b.dist);
+  const compD=compDCs.map(d=>({...d,dist:hvs(la,ln,d.lat,d.lng)}));
 
-  await doStep('doc', 1, `물건 입력 정보 구조화.\n${info}\nJSON:{"score":숫자,"grade":"A|B|C|D","key_facts":["사실1","사실2","사실3"],"findings":[{"text":"내용","type":"good|warn|bad"}],"reasoning":"2-3문장"}`);
-  await doStep('prop', 2, `DC 부지 건물·입지·가치 분석.\n${info}\n가장 가까운 변전소: ${subD[0]?.name}(${subD[0]?.dist?.toFixed(1)}km), ${subD[0]?.avail}\nJSON:{"score":숫자,"grade":"A|B|C|D","value_est":"부지가치(억)","dcf_value":"DCF(억)","findings":[{"text":"내용","type":"good|warn|bad"}],"reasoning":"3-4문장"}`);
-  await doStep('conn', 3, `자사 DC 연계.\n${info}\n자사DC: ${ownD.map(d=>`${d.name}:${d.dist.toFixed(1)}km`).join(', ')}\nJSON:{"score":숫자,"grade":"A|B|C|D","nearest":"DC명","nearest_dist":km숫자,"ring":"가능|검토필요|불가","dr":"우수|적합|보통|부적합","latency_ms":ms숫자,"findings":[{"text":"내용","type":"good|warn|bad"}],"reasoning":"3-4문장"}`);
-  await doStep('region', 4, `안산 권역 경쟁력.\n${info}\n경쟁DC: ${compD.map(d=>`${d.name}(${d.dist.toFixed(1)}km,${d.mw}MW,${d.occ},${d.tag})`).join(' / ')}\nJSON:{"score":숫자,"grade":"A|B|C|D","position":"상위|중위|하위","timing":"최적|양호|보통|지연","differentiation":["차별화1","차별화2"],"findings":[{"text":"내용","type":"good|warn|bad"}],"reasoning":"3-4문장"}`);
-  
-  // ★ 스텝 5: 5개 고객사 상세 분석
-  await doStep('cust', 5, `타겟 고객사 5개사 적합성을 각 사의 실제 요구사항 기준으로 상세 분석.
-${info}
-각 고객사 요구사항은 시스템 프롬프트 참조.
+  setProcStatus(5,'running','분석 중...');
 
+  await doStep('doc',1,`물건 입력 정보 구조화.\n${info}\nJSON:{"score":숫자,"grade":"A|B|C|D","key_facts":["사실1","사실2","사실3"],"findings":[{"text":"내용","type":"good|warn|bad"}],"reasoning":"2-3문장"}`);
+  await doStep('prop',2,`DC 부지 분석.\n${info}\n가장 가까운 변전소: ${subD[0]?.name}(${subD[0]?.dist?.toFixed(1)}km), ${subD[0]?.status}\nJSON:{"score":숫자,"grade":"A|B|C|D","value_est":"부지가치(억)","dcf_value":"DCF(억)","findings":[{"text":"내용","type":"good|warn|bad"}],"reasoning":"3-4문장"}`);
+  await doStep('conn',3,`자사 DC 연계.\n${info}\n자사DC: ${ownD.map(d=>`${d.name}:${d.dist.toFixed(1)}km`).join(', ')}\nJSON:{"score":숫자,"grade":"A|B|C|D","nearest":"DC명","nearest_dist":km,"ring":"가능|검토필요|불가","dr":"우수|적합|보통|부적합","latency_ms":숫자,"findings":[{"text":"내용","type":"good|warn|bad"}],"reasoning":"3-4문장"}`);
+  await doStep('region',4,`안산 권역 경쟁력.\n${info}\n경쟁DC: ${compD.map(d=>`${d.name}(${d.dist.toFixed(1)}km,${d.mw}MW,${d.status})`).join(' / ')}\n위험지역: ${riskAreas.map(r=>`${r.name}(${r.level})`).join(', ')}\nJSON:{"score":숫자,"grade":"A|B|C|D","position":"상위|중위|하위","timing":"최적|양호|보통|지연","differentiation":["차별화1","차별화2"],"risk_summary":"위험지역 영향 분석 1문장","findings":[{"text":"내용","type":"good|warn|bad"}],"reasoning":"3-4문장"}`);
+  await doStep('cust',5,`타겟 5개 고객사 적합성.\n${info}\n
 JSON:{"score":숫자,"grade":"A|B|C|D",
 "scores":{"naver":숫자,"aws":숫자,"ms":숫자,"google":숫자,"finance":숫자},
 "details":{
-  "naver":{"score":숫자,"verdict":"추천|조건부추천|비추천","reason":"2문장","key_match":["핵심부합1","핵심부합2"],"gap":["충족못한요건"]},
-  "aws":{"score":숫자,"verdict":"추천|조건부추천|비추천","reason":"2문장","key_match":["핵심부합1","핵심부합2"],"gap":["충족못한요건"]},
-  "ms":{"score":숫자,"verdict":"추천|조건부추천|비추천","reason":"2문장","key_match":["핵심부합1","핵심부합2"],"gap":["충족못한요건"]},
-  "google":{"score":숫자,"verdict":"추천|조건부추천|비추천","reason":"2문장","key_match":["핵심부합1","핵심부합2"],"gap":["충족못한요건"]},
-  "finance":{"score":숫자,"verdict":"추천|조건부추천|비추천","reason":"2문장","key_match":["핵심부합1","핵심부합2"],"gap":["충족못한요건"]}
+  "naver":{"score":숫자,"verdict":"추천|조건부추천|비추천","reason":"2문장","key_match":["충족요건1","충족요건2"],"gap":["미충족요건"]},
+  "aws":{"score":숫자,"verdict":"추천|조건부추천|비추천","reason":"2문장","key_match":["충족요건1","충족요건2"],"gap":["미충족요건"]},
+  "ms":{"score":숫자,"verdict":"추천|조건부추천|비추천","reason":"2문장","key_match":["충족요건1","충족요건2"],"gap":["미충족요건"]},
+  "google":{"score":숫자,"verdict":"추천|조건부추천|비추천","reason":"2문장","key_match":["충족요건1","충족요건2"],"gap":["미충족요건"]},
+  "finance":{"score":숫자,"verdict":"추천|조건부추천|비추천","reason":"2문장","key_match":["충족요건1","충족요건2"],"gap":["미충족요건"]}
 },
-"top_customer":"최우선고객id",
-"portfolio":"복수고객 포트폴리오 전략 2문장",
-"revenue_est":"상위2개 기준 연간 임대 수익 추정(억원)",
-"findings":[{"text":"내용","type":"good|warn|bad"}],
-"reasoning":"3-4문장"}`);
+"top_customer":"id","portfolio":"복수고객 전략 2문장","revenue_est":"연간수익(억)","findings":[{"text":"내용","type":"good|warn|bad"}],"reasoning":"3-4문장"}`);
+  await doStep('final',6,`5단계 종합 D단계 보고서.\n물건: ${name}\n분석: ${JSON.stringify(stepData).slice(0,1800)}\nJSON:{"total":숫자,"recommendation":"착수 추천|보류|반려","confidence":"high|medium|low","summary":"3문장","weighted":{"입지가치":숫자,"전력인프라":숫자,"자사연계":숫자,"권역경쟁":숫자,"고객적합":숫자},"conditions":["선행조건1","조건2","조건3"],"target":"최우선고객id","target2":"차선고객id","revenue_3yr":"3년누적(억)","risks":["리스크1","리스크2","리스크3"],"report":"# DC 물건 D단계 착수 타당성 검토 보고서\\n\\n## 1. 개요\\n...\\n\\n## 2. 물건 분석\\n...\\n\\n## 3. 자사 DC 연계\\n...\\n\\n## 4. 안산 권역 시장\\n...\\n\\n## 5. 타겟 고객사 분석\\n### 5-1. 네이버\\n...\\n### 5-2. AWS\\n...\\n### 5-3. Microsoft Azure\\n...\\n### 5-4. Google Cloud\\n...\\n### 5-5. 금융사\\n...\\n\\n## 6. 투자 타당성\\n...\\n\\n## 7. 결론 및 권고\\n...\\n(각 200자 이상)"}`);
 
-  await doStep('final', 6, `5단계 종합 D단계 착수 타당성 보고서.
-물건: ${name}
-분석 요약: ${JSON.stringify(stepData).slice(0,1800)}
-JSON:{"total":숫자,"recommendation":"착수 추천|보류|반려","confidence":"high|medium|low","summary":"3문장","weighted":{"입지가치":숫자,"전력인프라":숫자,"자사연계":숫자,"권역경쟁":숫자,"고객적합":숫자},"conditions":["선행조건1","조건2","조건3"],"target":"최우선타겟고객","target2":"차선타겟","revenue_3yr":"3년누적수익(억)","risks":["리스크1","리스크2","리스크3"],"report":"# DC 물건 D단계 착수 타당성 검토 보고서\\n\\n## 1. 개요\\n...\\n\\n## 2. 물건 분석\\n...\\n\\n## 3. 자사 DC 연계\\n...\\n\\n## 4. 안산 권역 시장\\n...\\n\\n## 5. 타겟 고객사 분석\\n### 5-1. 네이버\\n...\\n### 5-2. AWS\\n...\\n### 5-3. Microsoft Azure\\n...\\n### 5-4. Google Cloud\\n...\\n### 5-5. 금융사\\n...\\n\\n## 6. 투자 타당성\\n...\\n\\n## 7. 결론 및 권고\\n...\\n(각 섹션 200자 이상 상세)"}`);
-
-  if (stepData.final) showResult(stepData.final);
-  if (stepData.final?.report) showReport(stepData.final.report);
-  setAg('COMPLETE', `"${name}" 분석 완료`, 'done');
+  if(stepData.final) showResult(stepData.final);
+  if(stepData.final?.report) showReport(stepData.final.report);
+  setAg('COMPLETE',`"${name}" 분석 완료`,'done');
+  setProcStatus(5,'done','✓ 분석 완료');
+  setProcStatus(6,'done','✓ 보고서 생성');
   btn.disabled=false; btn.innerHTML='▶ 재분석';
 }
 
-async function doStep(id, n, prompt) {
-  setDot(n,'active'); setStepRunning(id); setAg(`STEP ${n}/6`, STEPS_CFG.find(s=>s.id===id)?.name, 'run');
+async function doStep(id,n,prompt) {
+  setDot(n,'active'); setStepRunning(id);
+  setAg(`STEP ${n}/6`, STEPS_CFG.find(s=>s.id===id)?.name, 'run');
   try { const r=await callAI(prompt); stepData[id]=r; setStepDone(id,r); setDot(n,'done'); }
   catch(e) { setStepErr(id,e.message); stepData[id]={score:0,grade:'D',findings:[],reasoning:'오류: '+e.message}; }
   await new Promise(r=>setTimeout(r,200));
 }
 
-// ─────────────────────────────────────────────
-// 스텝 카드
-// ─────────────────────────────────────────────
-function buildCards() {
+// ════════════════════════════════════════════
+//  스텝 카드 렌더링
+// ════════════════════════════════════════════
+function buildStepCards() {
   document.getElementById('steps-area').innerHTML = STEPS_CFG.map(s =>
-    `<div class="step-card" id="sc-${s.id}"><div class="step-head" onclick="document.getElementById('sbody-${s.id}').classList.toggle('open')"><div class="snum" id="sn-${s.id}">${s.n}</div><div class="sinfo"><div class="sname" id="sname-${s.id}">${s.name}</div><div class="ssub" id="ssub-${s.id}">대기 중</div></div><div class="sscore hidden" id="sscore-${s.id}"></div></div><div class="step-body" id="sbody-${s.id}"></div></div>`
+    `<div class="step-card" id="sc-${s.id}"><div class="step-head" onclick="document.getElementById('sbody-${s.id}').classList.toggle('open')"><div class="s-num" id="sn-${s.id}">${s.n}</div><div class="s-info"><div class="s-name" id="sname-${s.id}">${s.name}</div><div class="s-sub" id="ssub-${s.id}">대기 중</div></div><div class="s-score hidden" id="sscore-${s.id}"></div></div><div class="step-body" id="sbody-${s.id}"></div></div>`
   ).join('');
 }
+const NUM_ICONS = {01:'01',02:'02',03:'03',04:'04',05:'05',06:'06'};
 function setStepRunning(id) {
   document.getElementById('sc-'+id).className='step-card running';
-  document.getElementById('sn-'+id).className='snum run';
-  document.getElementById('sname-'+id).className='sname run';
+  document.getElementById('sn-'+id).className='s-num run';
+  document.getElementById('sname-'+id).className='s-name run';
   document.getElementById('ssub-'+id).innerHTML='<span class="spin"></span> 분석 중...';
 }
 function setStepDone(id, r) {
-  const sc = r.score??r.total??0;
+  const sc=r.score??r.total??0;
   document.getElementById('sc-'+id).className='step-card done';
-  document.getElementById('sn-'+id).className='snum done'; document.getElementById('sn-'+id).textContent='✓';
-  document.getElementById('sname-'+id).className='sname done'; document.getElementById('ssub-'+id).textContent='완료';
+  document.getElementById('sn-'+id).className='s-num done'; document.getElementById('sn-'+id).textContent='✓';
+  document.getElementById('sname-'+id).className='s-name done'; document.getElementById('ssub-'+id).textContent='완료';
   const se=document.getElementById('sscore-'+id); se.textContent=sc; se.style.color=sCol(sc); se.classList.remove('hidden');
-
   let html='';
   if(r.key_facts) html+=r.key_facts.map(f=>`<div class="finding"><div class="fd g"></div><div>${f}</div></div>`).join('');
   if(r.findings) html+=r.findings.map(f=>`<div class="finding"><div class="fd ${f.type==='good'?'g':f.type==='bad'?'b':'w'}"></div><div>${f.text}</div></div>`).join('');
-
-  // 메트릭
   const ms=[];
   if(r.value_est) ms.push(['부지가치',r.value_est]); if(r.dcf_value) ms.push(['DCF',r.dcf_value]);
-  if(r.nearest) ms.push(['최인접 자사DC',r.nearest+'('+r.nearest_dist?.toFixed(1)+'km)']);
+  if(r.nearest) ms.push(['최인접 자사DC',r.nearest+'('+r.nearest_dist?.toFixed?.(1)+'km)']);
   if(r.ring) ms.push(['링 토폴로지',r.ring]); if(r.latency_ms) ms.push(['지연',r.latency_ms+'ms']);
   if(r.position) ms.push(['시장 포지션',r.position]); if(r.timing) ms.push(['진입 타이밍',r.timing]);
-  if(r.revenue_est) ms.push(['연간 수익 추정',r.revenue_est]);
+  if(r.risk_summary) ms.push(['위험지역 영향',r.risk_summary]);
+  if(r.revenue_est) ms.push(['연간 수익',r.revenue_est]);
   if(ms.length) html+=`<div class="metrics">${ms.map(([k,v])=>`<div class="metric"><div class="metric-l">${k}</div><div class="metric-v">${v}</div></div>`).join('')}</div>`;
-
-  // ★ 고객사 상세 분석 (스텝 5)
-  if (id==='cust' && r.scores && r.details) {
-    html += `<div style="margin-top:12px;font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;">고객사별 적합성 점수</div>`;
-    html += '<div class="cust-grid">';
-    CUSTS.forEach(c => {
-      const s = r.scores[c.id] || 0;
-      html += `<div class="cust-card">
-        <div class="cn" style="color:${c.color}">${c.logo} ${c.name}</div>
-        <div class="cs" style="color:${sCol(s)}">${s}</div>
-        <div class="cb"><div class="cf" style="width:${s}%;background:${sCol(s)};"></div></div>
-        <span class="tag ${s>=75?'tag-g':s>=55?'tag-a':'tag-r'}">${s>=75?'추천':s>=55?'조건부':'비추천'}</span>
-      </div>`;
-    });
-    html += '</div>';
-    // 고객사별 상세 테이블
-    html += `<div style="margin-top:14px;font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;">고객사별 상세 분석</div>`;
-    CUSTS.forEach(c => {
-      const det = r.details?.[c.id] || {};
-      const s = r.scores[c.id] || 0;
-      const cls = s>=75?'bg':s>=55?'ba':'br';
-      html += `<div style="background:#fff;border:1px solid #e2e8f0;border-radius:7px;padding:10px 12px;margin-bottom:8px;">
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:7px;">
-          <span style="font-size:14px;">${c.logo}</span>
-          <span style="font-size:13px;font-weight:700;color:${c.color};">${c.name}</span>
-          <span style="font-size:12px;font-weight:800;font-family:monospace;color:${sCol(s)};">${s}점</span>
-          <span class="badge ${cls}">${det.verdict||''}</span>
+  // 고객사 분석 스텝
+  if(id==='cust'&&r.scores&&r.details) {
+    html+=`<div style="margin-top:12px;font-size:10px;font-weight:700;color:var(--slate);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;">고객사별 적합성</div>`;
+    html+='<div class="cust-score-grid">';
+    CUSTS.forEach(c=>{const s=r.scores[c.id]||0;html+=`<div class="csg-card"><div class="csg-name" style="color:${c.color}">${c.logo} ${c.name}</div><div class="csg-score" style="color:${sCol(s)}">${s}</div><div class="csg-bar"><div class="csg-fill" style="width:${s}%;background:${sCol(s)};"></div></div><span class="tag ${s>=75?'tag-g':s>=55?'tag-a':'tag-r'}" style="font-size:9px;">${s>=75?'추천':s>=55?'조건부':'비추천'}</span></div>`;});
+    html+='</div>';
+    CUSTS.forEach(c=>{
+      const det=r.details?.[c.id]||{}, s=r.scores[c.id]||0;
+      html+=`<div class="cust-detail">
+        <div class="cd-head">
+          <span class="cd-logo">${c.logo}</span>
+          <span class="cd-name" style="color:${c.color}">${c.name}</span>
+          <span class="cd-score" style="color:${sCol(s)}">${s}점</span>
+          <span class="cd-verdict tag ${s>=75?'tag-g':s>=55?'tag-a':'tag-r'}">${det.verdict||''}</span>
         </div>
-        <div style="font-size:11.5px;color:#475569;line-height:1.6;margin-bottom:6px;">${det.reason||''}</div>
-        ${det.key_match?.length?`<div style="font-size:10px;font-weight:700;color:#16a34a;text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px;">✓ 충족 요건</div><div style="font-size:11.5px;color:#475569;">${det.key_match.join(' · ')}</div>`:''}
-        ${det.gap?.length?`<div style="font-size:10px;font-weight:700;color:#d97706;text-transform:uppercase;letter-spacing:.05em;margin-top:5px;margin-bottom:3px;">△ 충족 필요</div><div style="font-size:11.5px;color:#475569;">${det.gap.join(' · ')}</div>`:''}
+        <div class="cd-reason">${det.reason||''}</div>
+        <div class="cd-match-row">
+          ${det.key_match?.length?`<div class="cd-match"><div class="cd-match-title">✓ 충족 요건</div>${det.key_match.join('<br>')}</div>`:''}
+          ${det.gap?.length?`<div class="cd-gap"><div class="cd-match-title">△ 충족 필요</div>${det.gap.join('<br>')}</div>`:''}
+        </div>
       </div>`;
     });
-    if(r.portfolio) html+=`<div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:6px;padding:9px 12px;margin-top:6px;font-size:12px;color:#1e40af;"><b>포트폴리오 전략:</b> ${r.portfolio}</div>`;
-    if(r.revenue_est) html+=`<div style="margin-top:10px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:6px;padding:9px 12px;"><div style="font-size:9px;color:#16a34a;font-weight:700;text-transform:uppercase;margin-bottom:3px;">예상 연간 임대 수익 (상위 2개사)</div><div style="font-size:20px;font-weight:700;color:#16a34a;">${r.revenue_est}</div></div>`;
+    if(r.portfolio) html+=`<div style="background:var(--blue-lo);border:1px solid #bfdbfe;border-radius:6px;padding:9px 12px;margin-top:6px;font-size:12px;color:#1e40af;"><b>포트폴리오 전략:</b> ${r.portfolio}</div>`;
+    if(r.revenue_est) html+=`<div style="margin-top:10px;background:var(--green-lo);border:1px solid #86efac;border-radius:6px;padding:9px 12px;"><div style="font-size:9px;color:var(--green);font-weight:700;text-transform:uppercase;margin-bottom:3px;">예상 연간 임대 수익</div><div style="font-size:20px;font-weight:700;color:var(--green);">${r.revenue_est}</div></div>`;
   }
-  if(r.reasoning) html+=`<div class="reason"><b style="font-size:9px;color:#2563eb;letter-spacing:.08em;text-transform:uppercase;">AI 추론 근거</b><br>${r.reasoning}</div>`;
+  if(r.reasoning) html+=`<div class="reason-box"><b style="font-size:9px;color:var(--blue);letter-spacing:.08em;text-transform:uppercase;">AI 추론 근거</b><br>${r.reasoning}</div>`;
   const b=document.getElementById('sbody-'+id); b.innerHTML=html; b.classList.add('open');
 }
-function setStepErr(id, msg) {
+function setStepErr(id,msg) {
   document.getElementById('sc-'+id).className='step-card error';
-  document.getElementById('sn-'+id).className='snum err'; document.getElementById('sn-'+id).textContent='!';
+  document.getElementById('sn-'+id).className='s-num err'; document.getElementById('sn-'+id).textContent='!';
   document.getElementById('ssub-'+id).textContent='오류: '+msg.slice(0,60);
 }
 
-// ─────────────────────────────────────────────
-// 종합 결과
-// ─────────────────────────────────────────────
+// ════════════════════════════════════════════
+//  종합 결과
+// ════════════════════════════════════════════
 function showResult(f) {
   const el=document.getElementById('result-area'); el.classList.remove('hidden');
   const tot=f.total||0, rec=f.recommendation||'—';
@@ -846,53 +1230,85 @@ function showResult(f) {
   const dims=[['입지·가치','입지가치'],['전력인프라','전력인프라'],['자사연계','자사연계'],['권역경쟁','권역경쟁'],['고객적합','고객적합']];
   el.innerHTML=`<div class="result-card">
     <div style="display:flex;align-items:flex-start;gap:16px;">
-      <div><div class="rscore" style="color:${sCol(tot)}">${tot}</div><div style="font-size:10px;color:#94a3b8;margin-top:3px;">/ 100점</div></div>
+      <div><div class="rs" style="color:${sCol(tot)}">${tot}</div><div style="font-size:10px;color:var(--slate2);margin-top:3px;">/ 100점</div></div>
       <div>
-        <span class="rrec ${rcls}">${rec}</span>
-        <div style="font-size:11px;color:#64748b;margin-bottom:5px;">신뢰도: ${f.confidence==='high'?'높음':f.confidence==='medium'?'보통':'낮음'}</div>
-        <div style="font-size:12.5px;color:#475569;line-height:1.6;">${f.summary||''}</div>
+        <span class="rr tag ${rcls}">${rec}</span>
+        <div style="font-size:11px;color:var(--slate);margin-bottom:5px;">신뢰도: ${f.confidence==='high'?'높음':f.confidence==='medium'?'보통':'낮음'}</div>
+        <div style="font-size:12.5px;color:var(--text2);line-height:1.65;">${f.summary||''}</div>
       </div>
     </div>
-    <div class="score-grid" style="margin-top:14px;">${dims.map(([l,k])=>{const v=ws[k]||0;return`<div class="sc"><div class="scn" style="color:${sCol(v)}">${v}</div><div class="scl">${l}</div></div>`}).join('')}</div>
-    ${(f.target||f.target2)?`<div style="margin-top:12px;padding:10px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;"><div style="font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;margin-bottom:5px;">추천 타겟 고객</div><div style="display:flex;gap:8px;">${f.target?`<span style="padding:4px 12px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:5px;font-size:12.5px;font-weight:700;color:#2563eb;">${CUSTS.find(c=>c.id===f.target)?.name||f.target} (최우선)</span>`:''} ${f.target2?`<span style="padding:4px 12px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:5px;font-size:12.5px;font-weight:700;color:#16a34a;">${CUSTS.find(c=>c.id===f.target2)?.name||f.target2} (차선)</span>`:''}</div></div>`:''}
-    ${f.conditions?.length?`<div style="margin-top:12px;"><div style="font-size:9.5px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.07em;margin-bottom:7px;">착수 선행 조건</div>${f.conditions.map((c,i)=>`<div style="display:flex;gap:8px;padding:6px 0;border-bottom:1px solid #f1f5f9;font-size:12.5px;"><span class="tag tag-a" style="flex-shrink:0;">C${i+1}</span>${c}</div>`).join('')}</div>`:''}
+    <div class="score-5grid" style="margin-top:14px;">${dims.map(([l,k])=>{const v=ws[k]||0;return`<div class="s5"><div class="s5n" style="color:${sCol(v)}">${v}</div><div class="s5l">${l}</div></div>`}).join('')}</div>
+    ${(f.target||f.target2)?`<div style="margin-top:12px;padding:10px;background:var(--surf2);border:1px solid var(--border);border-radius:6px;">
+      <div style="font-size:9.5px;font-weight:700;color:var(--slate);text-transform:uppercase;margin-bottom:6px;">추천 타겟 고객</div>
+      <div style="display:flex;gap:7px;">
+        ${f.target?`<span style="padding:4px 12px;background:var(--blue-lo);border:1px solid #bfdbfe;border-radius:5px;font-size:12.5px;font-weight:700;color:var(--blue);">${CUSTS.find(c=>c.id===f.target)?.name||f.target} 🥇</span>`:''}
+        ${f.target2?`<span style="padding:4px 12px;background:var(--green-lo);border:1px solid #86efac;border-radius:5px;font-size:12.5px;font-weight:700;color:var(--green);">${CUSTS.find(c=>c.id===f.target2)?.name||f.target2} 🥈</span>`:''}
+      </div>
+    </div>`:''}
+    ${f.conditions?.length?`<div style="margin-top:12px;"><div style="font-size:9.5px;font-weight:700;color:var(--slate);text-transform:uppercase;margin-bottom:7px;">착수 선행 조건</div>${f.conditions.map((c,i)=>`<div style="display:flex;gap:8px;padding:6px 0;border-bottom:1px solid var(--surf3);font-size:12.5px;"><span class="tag tag-a" style="flex-shrink:0;">C${i+1}</span>${c}</div>`).join('')}</div>`:''}
   </div>`;
 }
 
-// ─────────────────────────────────────────────
-// 보고서
-// ─────────────────────────────────────────────
+// ════════════════════════════════════════════
+//  보고서
+// ════════════════════════════════════════════
 function showReport(md) {
   const html=md.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
     .replace(/^# (.+)/gm,'<h1>$1</h1>').replace(/^## (.+)/gm,'<h2>$1</h2>').replace(/^### (.+)/gm,'<h3>$1</h3>')
     .replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>').replace(/^- (.+)/gm,'<li>$1</li>')
     .replace(/(<li>.*<\/li>\n?)+/g,m=>`<ul>${m}</ul>`).replace(/\n\n/g,'</p><p>').replace(/\n/g,'<br>');
-  document.getElementById('report-body').innerHTML='<div class="rb">'+html+'</div>';
+  document.getElementById('report-body').innerHTML='<div class="report-body">'+html+'</div>';
 }
 function copyReport() { navigator.clipboard.writeText(document.getElementById('report-body').innerText).then(()=>alert('복사되었습니다.')); }
 
-// ─────────────────────────────────────────────
-// 헬퍼
-// ─────────────────────────────────────────────
+// ════════════════════════════════════════════
+//  UI 헬퍼
+// ════════════════════════════════════════════
 function setAg(label,state,mode) {
   document.getElementById('ag-label').textContent=label;
   document.getElementById('ag-state').textContent=state;
-  const d=document.getElementById('ag-dot');
-  d.className='ag-dot'+(mode==='done'?' done':mode==='run'?' run':'');
+  document.getElementById('ag-dot').className='ag-dot'+(mode==='done'?' done':mode==='run'?' run':'');
 }
-function setDot(n,m) { const el=document.getElementById('d'+n); el.className='step-dot'+(m==='done'?' done':m==='active'?' active':''); }
-const sCol=v=>v>=80?'#16a34a':v>=65?'#d97706':v>=50?'#2563eb':'#dc2626';
-function hvs(la1,lo1,la2,lo2){const R=6371,dL=(la2-la1)*Math.PI/180,dO=(lo2-lo1)*Math.PI/180,a=Math.sin(dL/2)**2+Math.cos(la1*Math.PI/180)*Math.cos(la2*Math.PI/180)*Math.sin(dO/2)**2;return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));}
-function clearForm(){['f-name','f-addr','f-investor','f-area','f-power','f-price','f-itload','f-pue','f-sub','f-ic','f-lat','f-lng','f-im','f-racks'].forEach(id=>{const el=document.getElementById(id);if(el){el.value='';el.classList.remove('hi');}});}
+// 분석 스텝 진행 도트 (상단)
+const STEP_DOT_IDS = ['doc','prop','conn','region','cust','final'];
+function setDot(n, mode) { /* 프로세스 패널의 순번과 연결 */ }
 
-// ─────────────────────────────────────────────
-// 초기화
-// ─────────────────────────────────────────────
+function setProcStatus(n, mode, text) {
+  const pn=document.getElementById('pn-'+n);
+  if (!pn) return;
+  pn.className='proc-num'+(mode==='done'?' done':mode==='running'?' running':mode==='active'?' active':'');
+  if (mode==='done') pn.textContent='✓';
+  const ps=document.getElementById('ps-'+n);
+  if (ps) { ps.textContent=text; ps.className='proc-status'+(mode==='done'?' done':mode==='running'?' running':''); }
+}
+
+const sCol = v => v>=80?'#16a34a':v>=65?'#d97706':v>=50?'#2563eb':'#dc2626';
+function hvs(la1,lo1,la2,lo2){const R=6371,dL=(la2-la1)*Math.PI/180,dO=(lo2-lo1)*Math.PI/180,a=Math.sin(dL/2)**2+Math.cos(la1*Math.PI/180)*Math.cos(la2*Math.PI/180)*Math.sin(dO/2)**2;return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));}
+
+// ════════════════════════════════════════════
+//  초기화
+// ════════════════════════════════════════════
 window.addEventListener('load', () => {
   document.getElementById('f-date').value = new Date().toISOString().slice(0,10);
+  // API 키 복원
   const saved = localStorage.getItem('anthKey');
-  if (saved) { apiKey=saved; document.getElementById('api-key-input').value=saved; updateKeyUI(); }
-  setTarget(37.3192, 126.8012, '안산 글로벌메타 데이터센터');
+  if (saved) {
+    apiKey=saved;
+    document.getElementById('api-input').value=saved;
+    const el=document.getElementById('key-status');
+    el.textContent='저장됨 — 연동 확인을 눌러주세요'; el.className='tb-key-no';
+    document.getElementById('test-btn').disabled = false;
+  }
+  // 렌더링
+  renderMapMarkers();
+  renderDCLists();
+  renderCustomers();
+  renderRisks();
+  setTargetMarker(37.3192, 126.8012, '안산 글로벌메타 데이터센터');
+  // 프로세스 초기 상태 (1,2,3,4는 기본 데이터가 있으므로 완료 표시)
+  setProcStatus(2,'done','✓ 기본 데이터 로드됨');
+  setProcStatus(3,'done','✓ 5개사 정보 로드됨');
+  setProcStatus(4,'done','✓ 위험지역 정보 로드됨');
 });
 </script>
 </body>

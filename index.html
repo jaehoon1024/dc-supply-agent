@@ -771,7 +771,7 @@ async function testConnection() {
         'anthropic-dangerous-direct-browser-access': 'true'
       },
       body: JSON.stringify({
-        model: 'claude-haiku-4-5',
+        model: 'claude-haiku-4-5-20251001',
         max_tokens: 10,
         messages: [{ role: 'user', content: 'Hi' }]
       })
@@ -1136,20 +1136,56 @@ JSON:{"score":숫자,"grade":"A|B|C|D",
   "finance":{"score":숫자,"verdict":"추천|조건부추천|비추천","reason":"2문장","key_match":["충족요건1","충족요건2"],"gap":["미충족요건"]}
 },
 "top_customer":"id","portfolio":"복수고객 전략 2문장","revenue_est":"연간수익(억)","findings":[{"text":"내용","type":"good|warn|bad"}],"reasoning":"3-4문장"}`);
-  await doStep('final',6,`5단계 종합 D단계 보고서.\n물건: ${name}\n분석: ${JSON.stringify(stepData).slice(0,1800)}\nJSON:{"total":숫자,"recommendation":"착수 추천|보류|반려","confidence":"high|medium|low","summary":"3문장","weighted":{"입지가치":숫자,"전력인프라":숫자,"자사연계":숫자,"권역경쟁":숫자,"고객적합":숫자},"conditions":["선행조건1","조건2","조건3"],"target":"최우선고객id","target2":"차선고객id","revenue_3yr":"3년누적(억)","risks":["리스크1","리스크2","리스크3"],"report":"# DC 물건 D단계 착수 타당성 검토 보고서\\n\\n## 1. 개요\\n...\\n\\n## 2. 물건 분석\\n...\\n\\n## 3. 자사 DC 연계\\n...\\n\\n## 4. 안산 권역 시장\\n...\\n\\n## 5. 타겟 고객사 분석\\n### 5-1. 네이버\\n...\\n### 5-2. AWS\\n...\\n### 5-3. Microsoft Azure\\n...\\n### 5-4. Google Cloud\\n...\\n### 5-5. 금융사\\n...\\n\\n## 6. 투자 타당성\\n...\\n\\n## 7. 결론 및 권고\\n...\\n(각 200자 이상)"}`);
+  // ── STEP 6A: 점수·메타 JSON (report 필드 제외, 토큰 절약) ──
+  await doStep('final',6,
+    `5단계 종합 D단계 착수 타당성 분석.\n물건: ${name}\n분석 요약: ${JSON.stringify(stepData).slice(0,1800)}\n` +
+    `JSON만 출력 (report 필드 제외):\n{"total":숫자,"recommendation":"착수 추천|보류|반려","confidence":"high|medium|low","summary":"3문장 요약","weighted":{"입지가치":숫자,"전력인프라":숫자,"자사연계":숫자,"권역경쟁":숫자,"고객적합":숫자},"conditions":["선행조건1","조건2","조건3"],"target":"최우선고객id","target2":"차선고객id","revenue_3yr":"3년누적(억)","risks":["리스크1","리스크2","리스크3"]}`,
+    1200
+  );
 
   if(stepData.final) showResult(stepData.final);
-  if(stepData.final?.report) showReport(stepData.final.report);
+
+  // ── STEP 6B: 보고서 텍스트 별도 생성 (JSON 아님, 마크다운 직접 출력) ──
+  setAg('STEP 6/6', '보고서 작성 중...', 'run');
+  setStepRunning('final');
+  document.getElementById('ssub-final').textContent = '보고서 작성 중...';
+  try {
+    const reportPrompt =
+      `물건: ${name}\n분석 결과 요약: ${JSON.stringify(stepData).slice(0,2000)}\n\n` +
+      `위 분석을 바탕으로 D단계 착수 타당성 검토 보고서를 마크다운으로 작성하세요.\n` +
+      `JSON 없이 마크다운 텍스트만 출력하세요.\n\n` +
+      `# DC 물건 D단계 착수 타당성 검토 보고서\n\n` +
+      `## 1. 개요\n(물건 기본 정보, 검토 배경, 200자 이상)\n\n` +
+      `## 2. 물건 상세 분석\n(부지·전력·건축 인허가 현황, 200자 이상)\n\n` +
+      `## 3. 자사 DC 연계 분석\n(거리·링·DR 적합성, 200자 이상)\n\n` +
+      `## 4. 안산 권역 시장 분석\n(경쟁 현황·시장 기회, 200자 이상)\n\n` +
+      `## 5. 타겟 고객사 분석\n### 5-1. 네이버\n### 5-2. AWS\n### 5-3. Microsoft Azure\n### 5-4. Google Cloud\n### 5-5. 금융사\n(각 고객사 부합 요건·미충족 요건·추천 여부, 각 100자 이상)\n\n` +
+      `## 6. 투자 타당성\n(수익성·ROI·3년 누적 수익, 200자 이상)\n\n` +
+      `## 7. 결론 및 권고\n(종합 판단·착수 조건·우선 추진 사항, 200자 이상)`;
+
+    const reportText = await callAnthropicRaw(SYS, [{type:'text',text:reportPrompt}], 3000);
+    const cleanReport = reportText.replace(/```markdown|```/g,'').trim();
+    if(stepData.final) stepData.final.report = cleanReport;
+    showReport(cleanReport);
+    document.getElementById('sc-final').className='step-card done';
+    document.getElementById('sn-final').className='snum done';
+    document.getElementById('sn-final').textContent='✓';
+    document.getElementById('sname-final').className='sname done';
+    document.getElementById('ssub-final').textContent='완료';
+  } catch(e) {
+    document.getElementById('ssub-final').textContent='보고서 생성 오류: '+e.message.slice(0,50);
+    showReport(`# 보고서 생성 오류\n\n${e.message}\n\n분석 결과는 위 단계 카드에서 확인하세요.`);
+  }
   setAg('COMPLETE',`"${name}" 분석 완료`,'done');
   setProcStatus(5,'done','✓ 분석 완료');
   setProcStatus(6,'done','✓ 보고서 생성');
   btn.disabled=false; btn.innerHTML='▶ 재분석';
 }
 
-async function doStep(id,n,prompt) {
+async function doStep(id,n,prompt,maxTokens=2000) {
   setDot(n,'active'); setStepRunning(id);
   setAg(`STEP ${n}/6`, STEPS_CFG.find(s=>s.id===id)?.name, 'run');
-  try { const r=await callAI(prompt); stepData[id]=r; setStepDone(id,r); setDot(n,'done'); }
+  try { const r=await callAI(prompt,maxTokens); stepData[id]=r; setStepDone(id,r); setDot(n,'done'); }
   catch(e) { setStepErr(id,e.message); stepData[id]={score:0,grade:'D',findings:[],reasoning:'오류: '+e.message}; }
   await new Promise(r=>setTimeout(r,200));
 }

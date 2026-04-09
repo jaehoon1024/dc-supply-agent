@@ -180,7 +180,7 @@ async function doLogin() {
     var hash = await sha256(val);
     if (hash === PW_HASH) {
       document.getElementById('s-overlay').classList.add('show');
-      setTimeout(function(){ window.location.href='dc_agent_ansan_v2_49.html'; }, 1200);
+      setTimeout(function(){ window.location.href='dc_agent_ansan_v2_50.html'; }, 1200);
     } else {
       btn.disabled=false;
       ico.textContent='▶';

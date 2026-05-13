@@ -2,219 +2,367 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>DC 물건 분석 에이전트 — LGU+ DBO 사업팀</title>
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>DC DBO 통합 분석 플랫폼 — AI 에이전트 허브</title>
+<link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css">
 <style>
-:root {
-  --bg:#f1f5f9; --surf:#ffffff; --surf2:#f7f9fc; --surf3:#edf2f7;
-  --border:#e2e8f0; --border2:#cbd5e1;
-  --blue:#2563eb; --blue-lo:#eff6ff; --blue-mid:rgba(37,99,235,.12);
-  --green:#16a34a; --green-lo:#f0fdf4;
-  --red:#dc2626; --red-lo:#fef2f2;
-  --amber:#d97706; --slate:#64748b; --slate2:#94a3b8; --slate3:#cbd5e1;
-  --text:#1e293b; --text2:#475569;
-  --font:'Noto Sans KR',system-ui,sans-serif;
-  --mono:'IBM Plex Mono',monospace;
+:root{
+  /* Brand */
+  --primary:#E6007E;
+  --primary-lo:#FCE7F3;
+  --primary-mid:#FBCFE8;
+  --primary-dark:#B30062;
+  /* Surfaces */
+  --bg:#FAFAFA;--surf:#FFFFFF;--surf2:#F5F5F5;--surf3:#EEEEEE;
+  --border:#E5E5E5;--border2:#D4D4D4;
+  /* Text */
+  --black:#1A1A1A;
+  --text:#1A1A1A;--text2:#525252;
+  --slate:#737373;--slate2:#A3A3A3;--slate3:#D4D4D4;
+  /* Semantic (sparingly used) */
+  --warning:#D97706;--error:#DC2626;
+  /* Fonts */
+  --font:'Pretendard Variable','Pretendard','Noto Sans KR',-apple-system,BlinkMacSystemFont,system-ui,sans-serif;
+  --mono:'IBM Plex Mono','JetBrains Mono',monospace;
 }
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
-html,body{height:100%;background:var(--bg);font-family:var(--font);color:var(--text);overflow:hidden;}
+*{box-sizing:border-box;margin:0;padding:0;}
+html,body{font-family:var(--font);font-size:14px;background:var(--bg);color:var(--text);min-height:100vh;-webkit-font-smoothing:antialiased;}
+::-webkit-scrollbar{width:8px;height:8px;}
+::-webkit-scrollbar-thumb{background:var(--slate3);border-radius:4px;}
+::-webkit-scrollbar-thumb:hover{background:var(--slate2);}
+a{text-decoration:none;color:inherit;}
 
-/* topbar — 에이전트와 동일 */
-.topbar{height:46px;background:#0f172a;display:flex;align-items:center;padding:0 18px;gap:10px;border-bottom:1px solid #1e293b;flex-shrink:0;}
-.tb-title{font-size:13.5px;font-weight:700;color:#f1f5f9;letter-spacing:-.01em;white-space:nowrap;}
-.tb-badge{font-size:10px;font-weight:600;color:#60a5fa;background:rgba(37,99,235,.2);padding:2px 8px;border-radius:10px;border:1px solid rgba(37,99,235,.3);white-space:nowrap;}
-.tb-spacer{flex:1;}
-.tb-ver{font-size:10px;color:var(--slate2);font-family:var(--mono);}
+/* ── TOPBAR ── */
+.topbar{height:60px;background:var(--surf);border-bottom:1px solid var(--border);padding:0 28px;display:flex;align-items:center;gap:14px;position:sticky;top:0;z-index:100;}
+.tb-title{display:inline-flex;align-items:center;gap:11px;font-size:18px;font-weight:800;color:var(--black);letter-spacing:-.02em;}
+.tb-title-icon{width:24px;height:24px;flex-shrink:0;}
+.tb-title-icon .accent{fill:var(--primary);}
+.tb-badge{font-size:10.5px;font-weight:700;padding:4px 10px;border-radius:4px;background:var(--black);color:#fff;letter-spacing:.04em;font-family:var(--mono);}
+.tb-right{margin-left:auto;display:flex;align-items:center;gap:14px;}
+.tb-stat{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--text2);font-weight:600;}
+.tb-stat-dot{width:7px;height:7px;border-radius:50%;background:var(--primary);box-shadow:0 0 0 3px rgba(230,0,126,.18);}
 
-/* layout */
-.app{display:flex;flex-direction:column;height:100vh;}
-.body-wrap{flex:1;display:flex;align-items:center;justify-content:center;padding:32px 16px;overflow:auto;}
+/* ── MAIN ── */
+main{max-width:1280px;margin:0 auto;padding:0 28px 80px;}
 
-/* card */
-.card{width:100%;max-width:440px;background:var(--surf);border:1px solid var(--border);border-radius:14px;box-shadow:0 4px 24px rgba(0,0,0,.08),0 1px 4px rgba(0,0,0,.04);overflow:hidden;animation:cardIn .35s cubic-bezier(.22,1,.36,1);}
-@keyframes cardIn{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+/* ── HERO ── */
+.hero{padding:80px 0 56px;text-align:center;}
+.hero-eyebrow{display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border-radius:99px;background:var(--primary-lo);color:var(--primary);font-size:12px;font-weight:700;letter-spacing:.04em;margin-bottom:24px;}
+.hero-title{font-size:46px;font-weight:800;color:var(--black);line-height:1.18;letter-spacing:-.025em;margin-bottom:20px;}
+.hero-title .accent{color:var(--primary);}
+.hero-sub{font-size:16px;color:var(--text2);line-height:1.7;max-width:760px;margin:0 auto;font-weight:500;}
+.hero-sub b{color:var(--black);font-weight:700;}
 
-/* card header */
-.card-hd{background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 100%);padding:28px 32px 22px;border-bottom:1px solid rgba(255,255,255,.06);}
-.logo-row{display:flex;align-items:center;gap:12px;margin-bottom:14px;}
-.logo-icon{width:36px;height:36px;background:linear-gradient(135deg,#2563eb,#0891b2);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;}
-.logo-txt{font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#94a3b8;font-family:var(--mono);}
-.card-title{font-size:20px;font-weight:800;color:#f8fafc;letter-spacing:-.02em;line-height:1.25;margin-bottom:4px;}
-.card-sub{font-size:11.5px;color:#64748b;font-family:var(--mono);}
-.card-sub span{color:#38bdf8;font-weight:600;}
+/* ── DBO 안내 ── */
+.about-dbo{max-width:920px;margin:36px auto 0;padding:24px 28px;background:var(--surf);border:1px solid var(--border);border-radius:14px;}
+.about-dbo-head{display:flex;align-items:center;gap:13px;margin-bottom:14px;}
+.about-dbo-icon{width:42px;height:42px;border-radius:50%;background:var(--primary);display:flex;align-items:center;justify-content:center;color:#fff;font-size:19px;flex-shrink:0;}
+.about-dbo-title{font-size:15px;font-weight:800;color:var(--text);letter-spacing:-.01em;}
+.about-dbo-title .term{font-family:var(--mono);color:var(--primary);font-weight:800;}
+.about-dbo-body{font-size:13.5px;line-height:1.75;color:var(--text2);font-weight:500;}
+.about-dbo-body b{color:var(--black);font-weight:700;}
 
-/* card body */
-.card-bd{padding:24px 32px 26px;}
-.info-banner{display:flex;align-items:center;gap:10px;background:var(--blue-lo);border:1px solid #bfdbfe;border-radius:8px;padding:10px 13px;margin-bottom:20px;font-size:11.5px;color:#1d4ed8;}
-.field-label{font-size:10.5px;font-weight:700;color:var(--slate);letter-spacing:.08em;text-transform:uppercase;margin-bottom:7px;display:block;}
+/* ── 섹션 공통 ── */
+.section{margin-top:72px;}
+.section-head{display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px;}
+.section-title{font-size:24px;font-weight:800;color:var(--black);display:flex;align-items:center;gap:11px;letter-spacing:-.02em;}
+.section-title-num{width:32px;height:32px;border-radius:8px;background:var(--black);color:#fff;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;font-family:var(--mono);}
+.section-sub{font-size:13px;color:var(--slate);font-weight:500;}
 
-/* input */
-.inp-wrap{position:relative;margin-bottom:14px;}
-.inp-ico{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--slate2);font-size:14px;pointer-events:none;}
-.pw-inp{width:100%;height:40px;padding:0 40px 0 38px;border:1.5px solid var(--border2);border-radius:8px;background:var(--surf);color:var(--text);font-size:15px;font-family:var(--mono);letter-spacing:.18em;outline:none;transition:border-color .15s,box-shadow .15s;}
-.pw-inp:focus{border-color:var(--blue);box-shadow:0 0 0 3px var(--blue-mid);}
-.pw-inp.err{border-color:var(--red);box-shadow:0 0 0 3px rgba(220,38,38,.1);animation:shake .3s ease;}
-.pw-inp::placeholder{color:var(--slate3);letter-spacing:.04em;font-size:12px;}
-@keyframes shake{0%,100%{transform:translateX(0)}20%,60%{transform:translateX(-5px)}40%,80%{transform:translateX(5px)}}
-.toggle-btn{position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--slate2);cursor:pointer;font-size:14px;padding:3px;transition:color .15s;}
-.toggle-btn:hover{color:var(--blue);}
+/* ── PROCESS FLOW ── */
+.flow-wrap{background:var(--surf);border:1px solid var(--border);border-radius:16px;padding:32px 28px;}
+.flow-legend{display:flex;align-items:center;gap:20px;flex-wrap:wrap;font-size:12px;color:var(--text2);font-weight:500;}
+.flow-legend-item{display:flex;align-items:center;gap:7px;}
+.flow-legend-chip{width:9px;height:9px;border-radius:50%;flex-shrink:0;}
+.flow-legend-chip.live{background:var(--primary);box-shadow:0 0 0 3px rgba(230,0,126,.18);}
+.flow-legend-chip.soon{background:var(--slate3);}
 
-/* error */
-.err-msg{display:none;align-items:center;gap:7px;padding:9px 12px;background:var(--red-lo);border:1px solid #fca5a5;border-radius:7px;font-size:11.5px;color:#b91c1c;margin-bottom:14px;}
-.err-msg.show{display:flex;}
+.flow{display:grid;grid-template-columns:repeat(3,1fr);gap:28px;align-items:stretch;}
+@media (max-width:680px){.flow{grid-template-columns:1fr;gap:14px;}}
 
-/* login btn */
-.btn-login{width:100%;height:40px;background:var(--blue);color:#fff;border:none;border-radius:8px;font-size:13.5px;font-weight:700;font-family:var(--font);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;transition:background .15s,box-shadow .15s,transform .1s;}
-.btn-login:hover{background:#1d4ed8;box-shadow:0 4px 14px rgba(37,99,235,.35);}
-.btn-login:active{transform:translateY(1px);}
-.btn-login:disabled{background:var(--slate2);cursor:not-allowed;}
+.fcard{position:relative;background:var(--surf);border:1.5px solid var(--border);border-radius:14px;padding:24px 22px 26px;text-align:center;transition:all .18s;display:flex;flex-direction:column;overflow:hidden;}
+.fcard.live{border-color:var(--black);}
+.fcard.live::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:var(--primary);}
+.fcard.soon{background:var(--surf);border-style:dashed;border-color:var(--border2);}
+/* 카드 사이 화살표 — gap 한가운데 떠 있도록 */
+.fcard::after{content:'';position:absolute;top:50%;right:-22px;width:16px;height:1.5px;background:var(--border2);z-index:1;transform:translateY(-50%);}
+.fcard:last-child::after{display:none;}
+.fcard-arrow{position:absolute;top:50%;right:-8px;width:0;height:0;border-left:6px solid var(--border2);border-top:5px solid transparent;border-bottom:5px solid transparent;z-index:2;transform:translateY(-50%);}
+.fcard:last-child .fcard-arrow{display:none;}
+@media (max-width:680px){
+  .fcard::after,.fcard-arrow{display:none;}
+}
 
-/* footer */
-.card-ft{padding:12px 32px;border-top:1px solid var(--border);background:var(--surf2);display:flex;align-items:center;justify-content:space-between;}
-.ft-dot{display:flex;align-items:center;gap:6px;font-size:10.5px;color:var(--slate2);}
-.dot-g{width:6px;height:6px;background:var(--green);border-radius:50%;box-shadow:0 0 5px var(--green);animation:blink 2.4s ease infinite;}
-@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
-.ft-r{font-size:10px;color:var(--slate3);font-family:var(--mono);}
+.fcard-letter{display:inline-flex;align-self:center;align-items:center;justify-content:center;width:48px;height:48px;border-radius:12px;font-family:var(--mono);font-size:23px;font-weight:800;color:#fff;margin-bottom:7px;background:var(--black);letter-spacing:-.01em;}
+.fcard.soon .fcard-letter{background:var(--slate2);}
+.fcard-name{font-size:31px;font-weight:800;color:var(--black);margin-bottom:6px;line-height:1.2;letter-spacing:-.02em;}
+.fcard-en{font-size:11px;color:var(--slate2);font-weight:700;font-family:var(--mono);letter-spacing:.08em;margin-bottom:16px;text-transform:uppercase;}
+.fcard-desc{font-size:12.5px;color:var(--text2);line-height:1.6;margin-bottom:20px;font-weight:500;}
+.fcard-agents{text-align:left;padding:20px 0 4px;border-top:1px solid var(--border);margin-top:auto;display:flex;flex-direction:column;gap:8px;}
+.fcard-agents .ag{display:flex;align-items:center;gap:10px;font-size:14px;color:var(--slate);padding:12px 14px;position:relative;line-height:1.3;border-radius:10px;text-decoration:none;transition:all .15s;font-weight:600;letter-spacing:-.005em;background:var(--surf2);border:1.5px solid var(--border);}
+.fcard-agents .ag::before{content:'';flex-shrink:0;width:9px;height:9px;border-radius:50%;background:var(--slate3);}
+.fcard-agents .ag-name{flex:1;}
+.fcard-agents .ag-badge{flex-shrink:0;font-size:9.5px;font-weight:800;padding:3px 7px;border-radius:4px;background:var(--surf3);color:var(--slate2);letter-spacing:.05em;font-family:var(--mono);}
+.fcard-agents .ag.is-live{color:var(--black);font-weight:700;cursor:pointer;background:#fff;border-color:var(--primary-mid,#FBCFE8);}
+.fcard-agents .ag.is-live::before{background:var(--primary);box-shadow:0 0 0 3px rgba(230,0,126,.2);}
+.fcard-agents .ag.is-live .ag-badge{background:var(--primary);color:#fff;}
+.fcard-agents .ag.is-live:hover{border-color:var(--primary);transform:translateY(-1px);box-shadow:0 6px 14px rgba(230,0,126,.15);}
 
-/* success overlay */
-.s-overlay{display:none;position:fixed;inset:0;background:rgba(241,245,249,.92);backdrop-filter:blur(6px);z-index:999;align-items:center;justify-content:center;flex-direction:column;gap:14px;}
-.s-overlay.show{display:flex;}
-.s-check{width:56px;height:56px;background:var(--green);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:26px;color:#fff;box-shadow:0 0 32px rgba(22,163,74,.45);animation:popIn .4s cubic-bezier(.22,1,.36,1);}
-@keyframes popIn{from{transform:scale(.6);opacity:0}to{transform:scale(1);opacity:1}}
-.s-txt{font-size:14px;font-weight:700;color:var(--green);font-family:var(--mono);}
-.s-sub{font-size:11.5px;color:var(--slate);}
+/* ── AGENT CARDS ── */
+.agents-grid{display:grid;grid-template-columns:1fr 1fr;gap:22px;}
+@media (max-width:880px){.agents-grid{grid-template-columns:1fr;}}
 
-/* spin */
-.spin{display:inline-block;width:13px;height:13px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;}
-@keyframes spin{to{transform:rotate(360deg)}}
+.agent-card{position:relative;background:var(--surf);border:1.5px solid var(--border);border-radius:16px;padding:32px;display:flex;flex-direction:column;transition:all .2s;cursor:pointer;}
+.agent-card:hover{border-color:var(--black);transform:translateY(-3px);box-shadow:0 12px 32px rgba(0,0,0,.08);}
+.agent-card-tag{display:inline-flex;align-items:center;gap:7px;font-size:11.5px;font-weight:800;font-family:var(--mono);letter-spacing:.06em;margin-bottom:18px;color:var(--primary);text-transform:uppercase;}
+.agent-card-tag-dot{width:7px;height:7px;border-radius:50%;background:var(--primary);box-shadow:0 0 0 3px rgba(230,0,126,.2);}
+.agent-card-head{display:flex;align-items:center;gap:16px;margin-bottom:18px;}
+.agent-card-icon{width:54px;height:54px;border-radius:13px;display:flex;align-items:center;justify-content:center;flex-shrink:0;background:var(--black);color:#fff;}
+.agent-card-icon svg{width:28px;height:28px;}
+.agent-card-title{font-size:19px;font-weight:800;color:var(--black);line-height:1.3;letter-spacing:-.02em;}
+.agent-card-subtitle{font-size:12px;color:var(--slate);font-weight:600;margin-top:4px;font-family:var(--mono);letter-spacing:.02em;}
+.agent-card-desc{font-size:13.5px;line-height:1.7;color:var(--text2);margin-bottom:18px;font-weight:500;}
+.agent-card-features{list-style:none;padding:0;margin:0 0 22px;}
+.agent-card-features li{font-size:12.5px;color:var(--text2);line-height:1.65;padding:7px 0 7px 22px;position:relative;border-bottom:1px solid var(--border);font-weight:500;}
+.agent-card-features li:last-child{border-bottom:none;}
+.agent-card-features li::before{content:'';position:absolute;left:6px;top:13px;width:6px;height:6px;border-radius:50%;background:var(--primary);}
+.agent-card-cta{display:inline-flex;align-items:center;justify-content:center;gap:9px;padding:14px 22px;border-radius:10px;border:none;font-size:14px;font-weight:700;cursor:pointer;font-family:var(--font);transition:all .15s;color:#fff;background:var(--black);width:100%;letter-spacing:-.005em;}
+.agent-card-cta:hover{background:var(--primary);}
+.agent-card-cta svg{width:16px;height:16px;}
+
+/* ── 도움말 ── */
+.help-row{margin-top:56px;padding:22px 26px;background:var(--surf2);border-radius:13px;display:flex;align-items:center;gap:16px;font-size:13.5px;color:var(--text2);font-weight:500;}
+.help-row-icon{font-size:24px;flex-shrink:0;}
+.help-row-body{flex:1;line-height:1.7;}
+.help-row-body b{color:var(--black);font-weight:700;}
+
+/* ── FOOTER ── */
+footer{margin-top:64px;padding:28px 0;border-top:1px solid var(--border);text-align:center;font-size:11.5px;color:var(--slate);font-weight:500;}
+footer .ft-mid{display:inline-flex;align-items:center;gap:14px;}
+footer .ft-sep{width:1px;height:11px;background:var(--border2);}
+footer .ft-mid .brand{color:var(--black);font-weight:700;}
+
+/* ── 반응형 ── */
+@media (max-width:680px){
+  .hero{padding:48px 0 36px;}
+  .hero-title{font-size:32px;}
+  .hero-sub{font-size:14px;}
+  .topbar{padding:0 16px;height:54px;}
+  main{padding:0 16px 50px;}
+  .flow-wrap{padding:20px 16px;}
+  .agent-card{padding:24px;}
+  .section-title{font-size:20px;}
+  .about-dbo{padding:20px;}
+}
 </style>
 </head>
 <body>
 
-<div class="s-overlay" id="s-overlay">
-  <div class="s-check">✓</div>
-  <div class="s-txt">인증 완료</div>
-  <div class="s-sub">에이전트를 불러오는 중입니다...</div>
-</div>
-
-<div class="app">
-  <div class="topbar">
-    <div class="tb-title">DC 물건 분석 에이전트</div>
-    <div class="tb-badge">안산 권역 · D단계</div>
-    <div class="tb-spacer"></div>
-    <div class="tb-ver">v2.0 · DBO</div>
+<!-- ── TOPBAR ── -->
+<div class="topbar">
+  <div class="tb-title">
+    <svg class="tb-title-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect x="3" y="3" width="7" height="7" rx="1.5" fill="#1A1A1A"/>
+      <rect x="14" y="3" width="7" height="7" rx="1.5" fill="#1A1A1A"/>
+      <rect x="3" y="14" width="7" height="7" rx="1.5" fill="#1A1A1A"/>
+      <rect class="accent" x="14" y="14" width="7" height="7" rx="1.5"/>
+    </svg>
+    <span>DC DBO 통합 분석 플랫폼</span>
   </div>
-
-  <div class="body-wrap">
-    <div class="card">
-      <div class="card-hd">
-        <div class="logo-row">
-          <div class="logo-icon">🏗</div>
-          <div class="logo-txt">LG U+ · DBO 사업팀</div>
-        </div>
-        <div class="card-title">DC 물건 분석 에이전트</div>
-        <div class="card-sub">Data Center · <span>D단계 투자 검토 시스템</span></div>
-      </div>
-
-      <div class="card-bd">
-        <div class="info-banner">
-          <span>🔐</span>
-          <span>DBO 사업팀 내부 전용 시스템입니다. 접근 코드를 입력하세요.</span>
-        </div>
-
-        <label class="field-label" for="pw-inp">접근 코드</label>
-        <div class="inp-wrap">
-          <span class="inp-ico">🔑</span>
-          <input class="pw-inp" type="password" id="pw-inp"
-            placeholder="접근 코드 입력"
-            autocomplete="off"
-            onkeydown="if(event.key==='Enter') doLogin()">
-          <button class="toggle-btn" onclick="togglePw()" title="표시/숨김">👁</button>
-        </div>
-
-        <div class="err-msg" id="err-msg">
-          <span>⛔</span><span id="err-txt">접근 코드가 올바르지 않습니다.</span>
-        </div>
-
-        <button class="btn-login" id="btn-login" onclick="doLogin()">
-          <span id="btn-ico">▶</span>
-          <span id="btn-lbl">에이전트 시작</span>
-        </button>
-      </div>
-
-      <div class="card-ft">
-        <div class="ft-dot">
-          <div class="dot-g"></div>
-          <span>DBO 사업팀 전용 시스템</span>
-        </div>
-        <div class="ft-r">INTERNAL USE ONLY</div>
-      </div>
+  <div class="tb-badge">PoC v1.0</div>
+  <div class="tb-right">
+    <div class="tb-stat">
+      <span class="tb-stat-dot"></span>
+      <span>2 / 3 단계 운영중</span>
     </div>
   </div>
 </div>
 
+<main>
+
+<!-- ── HERO ── -->
+<section class="hero">
+  <div class="hero-eyebrow">⚡ AI 분석 에이전트 허브</div>
+  <h1 class="hero-title">AIDC DBO사업의 모든 단계를<br><span class="accent">AI에이전트로 분석 및 관리</span>합니다</h1>
+  <p class="hero-sub"><b>D 설계 → B 시공 → O 운영</b> — DBO 사업의 3단계를 단계별 특화 AI 에이전트가 지원합니다.</p>
+</section>
+
+<!-- ── 섹션 1: DBO 프로세스 ── -->
+<section class="section">
+  <div class="section-head">
+    <div>
+      <div class="section-title"><span class="section-title-num">1</span>DBO 사업 프로세스</div>
+      <div class="section-sub" style="margin-top:8px;">설계부터 운영까지 — 3단계 로드맵</div>
+    </div>
+    <div class="flow-legend">
+      <div class="flow-legend-item"><span class="flow-legend-chip live"></span><span>운영중</span></div>
+      <div class="flow-legend-item"><span class="flow-legend-chip soon"></span><span>준비 중</span></div>
+    </div>
+  </div>
+  <div class="flow-wrap">
+    <div class="flow" id="flow"></div>
+  </div>
+</section>
+
+<!-- ── 섹션 2: 사용 가능 에이전트 ── -->
+<section class="section">
+  <div class="section-head">
+    <div>
+      <div class="section-title"><span class="section-title-num">2</span>사용 가능 에이전트</div>
+      <div class="section-sub" style="margin-top:8px;">아래 카드를 클릭하면 해당 에이전트로 이동합니다</div>
+    </div>
+  </div>
+  <div class="agents-grid">
+
+    <!-- D단계 에이전트 -->
+    <a class="agent-card" href="DBO_Agent_D1_v1.1.html">
+      <div class="agent-card-tag"><span class="agent-card-tag-dot"></span>D 단계 · 운영중</div>
+      <div class="agent-card-head">
+        <div class="agent-card-icon">
+          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M3 7.5C3 6.67 3.67 6 4.5 6H9.5L11 7.5H19.5C20.33 7.5 21 8.17 21 9V17.5C21 18.33 20.33 19 19.5 19H4.5C3.67 19 3 18.33 3 17.5V7.5Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+            <line x1="3.5" y1="11" x2="20.5" y2="11" stroke="currentColor" stroke-width="1.8"/>
+          </svg>
+        </div>
+        <div>
+          <div class="agent-card-title">DC 물건 분석 에이전트</div>
+          <div class="agent-card-subtitle">Property / IM Analysis</div>
+        </div>
+      </div>
+      <p class="agent-card-desc">물건의 입지·전력·인허가·고객 적합성을 종합 분석하여 IC 보고서를 자동 생성합니다.</p>
+      <ul class="agent-card-features">
+        <li>권역별 후보 물건 지도 시각화 (자사 DC·변전소·경쟁사 위치)</li>
+        <li>IM 자료 PDF 자동 파싱 — 30+ 핵심 스펙 추출</li>
+        <li>입지·기술·일정·CAPEX·OPEX 5개 영역 자동 평가</li>
+        <li>주요 고객사 5개사 적합성 매칭 분석</li>
+        <li>리스크 매트릭스 (영향도×발생가능성) 자동 산출</li>
+      </ul>
+      <button class="agent-card-cta">
+        D 단계 에이전트 시작
+        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M5 12h14M13 5l7 7-7 7" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+    </a>
+
+    <!-- B단계 에이전트 -->
+    <a class="agent-card" href="DBO_Agent_B1_v1.0.html">
+      <div class="agent-card-tag"><span class="agent-card-tag-dot"></span>B 단계 · 운영중</div>
+      <div class="agent-card-head">
+        <div class="agent-card-icon">
+          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+            <line x1="3.5" y1="11" x2="20.5" y2="11" stroke="currentColor" stroke-width="1.8"/>
+          </svg>
+        </div>
+        <div>
+          <div class="agent-card-title">DC MEP 분석 에이전트</div>
+          <div class="agent-card-subtitle">Mechanical · Electrical · Plumbing Review</div>
+        </div>
+      </div>
+      <p class="agent-card-desc">MEP 장비·벤더·총판·가견적을 7단계로 통합 분석하여 의사결정을 지원합니다.</p>
+      <ul class="agent-card-features">
+        <li>IM·도면 PDF 자동 파싱 → 필요 장비 자동 도출</li>
+        <li>장비별 글로벌·국내 벤더 풀 자동 분석 (스펙 적합성·납기)</li>
+        <li>벤더별 국내 총판 능력 평가 (재무·실적·기술인력)</li>
+        <li>자사 참여 가능 항목 식별 + 추천 벤더 자동 도출</li>
+        <li>MW 기준 가견적 산출 + 7단계 종합 보고서</li>
+      </ul>
+      <button class="agent-card-cta">
+        B 단계 에이전트 시작
+        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M5 12h14M13 5l7 7-7 7" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+    </a>
+
+  </div>
+</section>
+
+<!-- ── 도움말 ── -->
+<div class="help-row">
+  <div class="help-row-icon">📌</div>
+  <div class="help-row-body">
+    <b>처음 사용하시나요?</b> &nbsp;
+    DC 물건 발굴 직후라면 <b>D 단계 (물건 분석)</b>부터 시작하시는 것을 권장합니다.
+    물건 분석 완료 후 MEP 장비·벤더 검토가 필요하면 <b>B 단계 (MEP 검토)</b>로 이동하세요.
+    각 에이전트는 분석 결과를 JSON으로 저장·복원할 수 있어 작업 도중 중단해도 안전합니다.
+  </div>
+</div>
+
+<!-- ── FOOTER ── -->
+<footer>
+  <div class="ft-mid">
+    <span class="brand">LG U+ DBO 사업팀</span>
+    <span class="ft-sep"></span>
+    <span>DC 투자심의 분석 플랫폼</span>
+    <span class="ft-sep"></span>
+    <span style="font-family:var(--mono);">PoC v1.0</span>
+  </div>
+</footer>
+
+</main>
+
 <script>
-// SHA-256(dbo@0409)
-const PW_HASH = 'c2320fbfbfc56a6c8676844f832b0fda68566f0a025caf395ca627429ee31f2b';
-
-async function sha256(msg) {
-  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(msg));
-  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
-}
-
-async function doLogin() {
-  var val  = document.getElementById('pw-inp').value;
-  var btn  = document.getElementById('btn-login');
-  var ico  = document.getElementById('btn-ico');
-  var lbl  = document.getElementById('btn-lbl');
-  var err  = document.getElementById('err-msg');
-
-  if (!val) { showErr('접근 코드를 입력하세요.'); return; }
-
-  btn.disabled=true;
-  ico.innerHTML='<span class="spin"></span>';
-  lbl.textContent='확인 중...';
-  err.classList.remove('show');
-
-  try {
-    var hash = await sha256(val);
-    if (hash === PW_HASH) {
-      document.getElementById('s-overlay').classList.add('show');
-      setTimeout(function(){ window.location.href='dc_agent_ansan_v3_71.html'; }, 1200);
-    } else {
-      btn.disabled=false;
-      ico.textContent='▶';
-      lbl.textContent='에이전트 시작';
-      document.getElementById('pw-inp').value='';
-      document.getElementById('pw-inp').focus();
-      showErr('접근 코드가 올바르지 않습니다.');
-    }
-  } catch(e) {
-    btn.disabled=false;
-    ico.textContent='▶';
-    lbl.textContent='에이전트 시작';
-    showErr('오류가 발생했습니다. 다시 시도하세요.');
+// ── DBO 3단계 × 단계당 3개 에이전트 ──
+var PHASES = [
+  {
+    area:'D', name:'설계', en:'Design',
+    desc:'자사 컨설팅 역량과 설계 노하우 기반 사전 검토',
+    agents:[
+      { name:'공급 관리', live:false },
+      { name:'물건 분석', live:true, link:'DBO_Agent_D1_v1.1.html' },
+      { name:'경제성 분석', live:false },
+      { name:'산출물 관리', live:false }
+    ]
+  },
+  {
+    area:'B', name:'시공', en:'Build',
+    desc:'건설을 넘어 MEP·운영 관점까지 통합 접근',
+    agents:[
+      { name:'MEP 검토', live:true, link:'DBO_Agent_B1_v1.0.html' },
+      { name:'구매 관리', live:false },
+      { name:'진척 관리', live:false },
+      { name:'커미셔닝 관리', live:false }
+    ]
+  },
+  {
+    area:'O', name:'운영', en:'Operate',
+    desc:'국내 다수 DC 운영 경험 기반 24/7 운영',
+    agents:[
+      { name:'운영 모니터링', live:false },
+      { name:'임차인 관리', live:false },
+      { name:'비용 관리', live:false },
+      { name:'유지 보수', live:false }
+    ]
   }
+];
+
+function renderFlow(){
+  var el = document.getElementById('flow');
+  if(!el) return;
+  var html = '';
+  PHASES.forEach(function(p, i){
+    var anyLive = p.agents.some(function(a){return a.live;});
+    var agentsHtml = '<div class="fcard-agents">';
+    p.agents.forEach(function(a){
+      if(a.live && a.link){
+        agentsHtml += '<a class="ag is-live" href="' + a.link + '" title="' + a.name + ' 에이전트로 이동"><span class="ag-name">' + a.name + '</span><span class="ag-badge">운영중</span></a>';
+      } else {
+        agentsHtml += '<span class="ag"><span class="ag-name">' + a.name + '</span><span class="ag-badge">준비중</span></span>';
+      }
+    });
+    agentsHtml += '</div>';
+    html += '<div class="fcard ' + (anyLive?'live':'soon') + '">' +
+      '<div class="fcard-letter">' + p.area + '</div>' +
+      '<div class="fcard-name">' + p.name + '</div>' +
+      '<div class="fcard-en">' + p.en + '</div>' +
+      '<div class="fcard-desc">' + p.desc + '</div>' +
+      agentsHtml +
+      '<span class="fcard-arrow"></span>' +
+      '</div>';
+  });
+  el.innerHTML = html;
 }
 
-function showErr(msg) {
-  var err=document.getElementById('err-msg');
-  var txt=document.getElementById('err-txt');
-  txt.textContent=msg;
-  err.classList.remove('show');
-  void err.offsetWidth;
-  err.classList.add('show');
-  var inp=document.getElementById('pw-inp');
-  inp.classList.add('err');
-  setTimeout(function(){ inp.classList.remove('err'); },600);
-}
-
-function togglePw() {
-  var inp=document.getElementById('pw-inp');
-  inp.type=inp.type==='password'?'text':'password';
-}
-
-window.addEventListener('load', function(){ document.getElementById('pw-inp').focus(); });
+document.addEventListener('DOMContentLoaded', renderFlow);
 </script>
+
 </body>
 </html>

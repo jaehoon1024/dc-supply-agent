@@ -69,6 +69,33 @@ main{max-width:1280px;margin:0 auto;padding:0 28px 80px;}
 .section-title-num{width:32px;height:32px;border-radius:8px;background:var(--black);color:#fff;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;font-family:var(--mono);}
 .section-sub{font-size:13px;color:var(--slate);font-weight:500;}
 
+/* ── WHY 섹션 (의의) ── */
+.why-wrap{background:linear-gradient(180deg,#fff 0%,var(--surf) 100%);border:1px solid var(--border);border-radius:16px;padding:32px;}
+.why-kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:32px;}
+.why-kpi{background:#fff;border:1px solid var(--border);border-radius:12px;padding:20px 18px;text-align:left;transition:all .2s;position:relative;overflow:hidden;}
+.why-kpi:hover{border-color:var(--primary);transform:translateY(-2px);box-shadow:0 8px 24px rgba(230,0,126,.08);}
+.why-kpi-icon{font-size:18px;margin-bottom:14px;display:block;line-height:1;opacity:.55;}
+.why-kpi-title{font-size:18px;font-weight:800;color:var(--black);letter-spacing:-.02em;margin-bottom:14px;line-height:1.3;}
+.why-kpi-change{font-size:17px;font-weight:300;color:var(--slate);font-family:var(--mono);letter-spacing:-.015em;line-height:1.2;margin-bottom:8px;}
+.why-kpi-change .arrow{color:var(--slate3);font-weight:300;margin:0 5px;}
+.why-kpi-change .new{color:var(--primary);font-weight:700;}
+.why-kpi-sub{font-size:11px;color:var(--slate2);line-height:1.55;font-weight:500;letter-spacing:-.005em;}
+
+.why-compare-head{font-size:13px;font-weight:700;color:var(--text);margin-bottom:14px;display:flex;align-items:center;gap:8px;}
+.why-compare-head::before{content:'';display:inline-block;width:3px;height:13px;background:var(--primary);border-radius:2px;}
+.why-compare{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--border);border-radius:10px;overflow:hidden;border:1px solid var(--border);}
+.why-col{background:#fff;padding:18px 20px;}
+.why-col.before{background:#fafafa;}
+.why-col-title{font-size:12px;font-weight:800;color:var(--slate);margin-bottom:14px;display:flex;align-items:center;gap:7px;letter-spacing:.01em;}
+.why-col.after .why-col-title{color:var(--primary);}
+.why-list{list-style:none;padding:0;margin:0;}
+.why-list li{font-size:12.5px;line-height:1.6;color:var(--text2);padding:7px 0 7px 18px;position:relative;font-weight:500;}
+.why-col.before .why-list li::before{content:'×';position:absolute;left:0;top:7px;color:var(--slate3);font-weight:800;font-size:13px;}
+.why-col.after .why-list li{color:var(--text);}
+.why-col.after .why-list li::before{content:'✓';position:absolute;left:0;top:7px;color:var(--primary);font-weight:800;font-size:12px;}
+.why-list li b{color:var(--black);font-weight:700;}
+.why-col.after .why-list li b{color:var(--primary);}
+
 /* ── PROCESS FLOW ── */
 .flow-wrap{background:var(--surf);border:1px solid var(--border);border-radius:16px;padding:32px 28px;}
 .flow-legend{display:flex;align-items:center;gap:20px;flex-wrap:wrap;font-size:12px;color:var(--text2);font-weight:500;}
@@ -153,6 +180,12 @@ footer .ft-mid .brand{color:var(--black);font-weight:700;}
   .agent-card{padding:24px;}
   .section-title{font-size:20px;}
   .about-dbo{padding:20px;}
+  .why-wrap{padding:20px 16px;}
+  .why-kpi-grid{grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:24px;}
+  .why-kpi{padding:14px 12px;}
+  .why-kpi-change{font-size:14px;}
+  .why-kpi-title{font-size:15px;}
+  .why-compare{grid-template-columns:1fr;}
 }
 </style>
 </head>
@@ -185,6 +218,74 @@ footer .ft-mid .brand{color:var(--black);font-weight:700;}
   <div class="hero-eyebrow">⚡ AI 분석 에이전트 허브</div>
   <h1 class="hero-title">AIDC DBO사업의 모든 단계를<br><span class="accent">AI에이전트로 분석 및 관리</span>합니다</h1>
   <p class="hero-sub"><b>D 설계 → B 시공 → O 운영</b> — DBO 사업의 3단계를 단계별 특화 AI 에이전트가 지원합니다.</p>
+</section>
+
+<!-- ── 섹션 0: 왜 AI 에이전트인가? ── -->
+<section class="section" style="margin-top:56px;">
+  <div class="section-head">
+    <div>
+      <div class="section-title"><span class="section-title-num">!</span>왜 AI 에이전트인가?</div>
+      <div class="section-sub" style="margin-top:8px;">DBO 사업 검토의 속도·정확성·일관성을 한 번에 끌어올립니다</div>
+    </div>
+  </div>
+  <div class="why-wrap">
+
+    <!-- 정량 KPI 4개 -->
+    <div class="why-kpi-grid">
+      <div class="why-kpi">
+        <span class="why-kpi-icon">⏱</span>
+        <div class="why-kpi-title">리드타임 단축</div>
+        <div class="why-kpi-change">12일<span class="arrow">→</span><span class="new">4일</span></div>
+        <div class="why-kpi-sub">D영역 물건 1건의 분석·보고서·제안서 작성 시간</div>
+      </div>
+      <div class="why-kpi">
+        <span class="why-kpi-icon">📊</span>
+        <div class="why-kpi-title">단일 워크플로우</div>
+        <div class="why-kpi-change">분산<span class="arrow">→</span><span class="new">통합</span></div>
+        <div class="why-kpi-sub">엑셀·PPT·수기 검토를 하나의 플랫폼으로</div>
+      </div>
+      <div class="why-kpi">
+        <span class="why-kpi-icon">🎯</span>
+        <div class="why-kpi-title">객관적 평가 기준</div>
+        <div class="why-kpi-change">주관<span class="arrow">→</span><span class="new">정량</span></div>
+        <div class="why-kpi-sub">AI 점수 + 5개 타겟 고객사 매칭으로 객관화</div>
+      </div>
+      <div class="why-kpi">
+        <span class="why-kpi-icon">📚</span>
+        <div class="why-kpi-title">노하우 자산화</div>
+        <div class="why-kpi-change">개인<span class="arrow">→</span><span class="new">조직</span></div>
+        <div class="why-kpi-sub">담당자 경험을 표준 체크리스트로 누적·공유</div>
+      </div>
+    </div>
+
+    <!-- 기존 vs AI 에이전트 적용 후 -->
+    <div class="why-compare-head">기존 업무 vs AI 에이전트 적용 후</div>
+    <div class="why-compare">
+      <div class="why-col before">
+        <div class="why-col-title">📋 기존 업무 흐름</div>
+        <ul class="why-list">
+          <li>물건마다 <b>처음부터</b> 자료 수집·검토 반복</li>
+          <li>부서별 자료가 <b>흩어져</b> 있어 통합 검토 어려움</li>
+          <li>담당자 경험·노하우에 의존, <b>품질 편차</b> 발생</li>
+          <li>고객사별 제안서를 <b>매번 새로</b> 작성</li>
+          <li>의사결정 근거·과정 <b>추적 어려움</b></li>
+          <li>분석 결과가 <b>일회성</b>으로 소멸</li>
+        </ul>
+      </div>
+      <div class="why-col after">
+        <div class="why-col-title">✨ AI 에이전트 적용 후</div>
+        <ul class="why-list">
+          <li>입력 한 번으로 <b>9단계 자동 분석</b> 완료</li>
+          <li>지도·체크리스트·리스크·보고서를 <b>한 화면</b>에서</li>
+          <li>AI + 표준 기준으로 <b>일관된 평가</b> 보장</li>
+          <li>분석 결과 기반 <b>맞춤형 제안서 자동 생성</b></li>
+          <li>모든 단계의 분석 이력 <b>자동 보관·재현</b></li>
+          <li>축적 데이터로 <b>사업 인사이트</b> 강화</li>
+        </ul>
+      </div>
+    </div>
+
+  </div>
 </section>
 
 <!-- ── 섹션 1: DBO 프로세스 ── -->
